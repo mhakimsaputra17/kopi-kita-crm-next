@@ -1,0 +1,137 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-background: var(--input-background);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --font-sans: 'DM Sans', system-ui, sans-serif;
+  --font-display: 'Playfair Display', serif;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+}
+
+/* ===== Kopi Kita — Warm Artisan Theme ===== */
+:root {
+  --radius: 0.75rem;
+  --background: #FFF8F0;
+  --foreground: #3C2415;
+  --card: #ffffff;
+  --card-foreground: #3C2415;
+  --popover: #ffffff;
+  --popover-foreground: #3C2415;
+  --primary: #3C2415;
+  --primary-foreground: #FFF8F0;
+  --secondary: #F5EDE4;
+  --secondary-foreground: #3C2415;
+  --muted: #F0E6DA;
+  --muted-foreground: #7A6555;
+  --accent: #D4A574;
+  --accent-foreground: #3C2415;
+  --destructive: #d4183d;
+  --destructive-foreground: #ffffff;
+  --border: rgba(60, 36, 21, 0.12);
+  --input: transparent;
+  --input-background: #F5EDE4;
+  --ring: #D4A574;
+  --chart-1: #3C2415;
+  --chart-2: #D4A574;
+  --chart-3: #8B9D77;
+  --chart-4: #A67C52;
+  --chart-5: #C4956A;
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #3C2415;
+  --sidebar-primary: #D4A574;
+  --sidebar-primary-foreground: #3C2415;
+  --sidebar-accent: rgba(212, 165, 116, 0.08);
+  --sidebar-accent-foreground: #3C2415;
+  --sidebar-border: rgba(60, 36, 21, 0.08);
+  --sidebar-ring: #D4A574;
+}
+
+.dark {
+  --background: #1A1210;
+  --foreground: #F5EDE4;
+  --card: #241C17;
+  --card-foreground: #F5EDE4;
+  --popover: #241C17;
+  --popover-foreground: #F5EDE4;
+  --primary: #D4A574;
+  --primary-foreground: #1A1210;
+  --secondary: #2E231C;
+  --secondary-foreground: #F5EDE4;
+  --muted: #2E231C;
+  --muted-foreground: #A89282;
+  --accent: #D4A574;
+  --accent-foreground: #1A1210;
+  --destructive: #d4183d;
+  --destructive-foreground: #ffffff;
+  --border: rgba(245, 237, 228, 0.1);
+  --input: #2E231C;
+  --input-background: #2E231C;
+  --ring: #D4A574;
+  --chart-1: #D4A574;
+  --chart-2: #A67C52;
+  --chart-3: #8B9D77;
+  --chart-4: #C4956A;
+  --chart-5: #E8C9A8;
+  --sidebar: #1A1210;
+  --sidebar-foreground: #F5EDE4;
+  --sidebar-primary: #D4A574;
+  --sidebar-primary-foreground: #1A1210;
+  --sidebar-accent: rgba(212, 165, 116, 0.1);
+  --sidebar-accent-foreground: #F5EDE4;
+  --sidebar-border: rgba(245, 237, 228, 0.08);
+  --sidebar-ring: #D4A574;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'DM Sans', system-ui, sans-serif;
+  }
+  h1, h2, h3 {
+    font-family: 'Playfair Display', serif;
+  }
+}
