@@ -8,7 +8,7 @@ AI-powered CRM untuk kedai kopi. Kelola pelanggan, analisis segmen, dan buat kam
 - **Tailwind CSS 4** + shadcn/ui
 - **Prisma 7** + PostgreSQL (Neon)
 - **Better Auth** (email/password)
-- **Vercel AI SDK** — multi-model (GitHub Models, Google Gemini, Groq)
+- **OpenAI SDK** — multi-model via OpenAI-compatible API (GitHub Models, Google Gemini, Groq)
 - **Upstash Redis** — rate limiting & caching
 
 ## Fitur Utama
