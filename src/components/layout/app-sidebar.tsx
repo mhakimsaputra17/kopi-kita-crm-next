@@ -8,7 +8,6 @@ import {
   Users,
   Sparkles,
   MessageCircle,
-  Bean,
   ChevronLeft,
   ChevronRight,
   LogOut,
@@ -48,12 +47,6 @@ export function AppSidebar({
   const { data: session } = useSession();
 
   const userName = session?.user?.name || "User";
-  const initials = userName
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
 
   const handleLogout = async () => {
     await signOut();
@@ -79,9 +72,11 @@ export function AppSidebar({
           isCollapsed ? "justify-center px-0 pt-7 pb-5" : "px-6 pt-7 pb-5"
         }`}
       >
-        <div className="w-9 h-9 rounded-[10px] bg-[#D4A574] flex items-center justify-center shrink-0">
-          <Bean className="w-[18px] h-[18px] text-[#3C2415]" />
-        </div>
+        <img
+          src="/kopikita.webp"
+          alt="Kopi Kita"
+          className="w-9 h-9 rounded-[10px] object-cover shrink-0"
+        />
         {!isCollapsed && (
           <span className="font-display text-[1.3rem] font-semibold text-sidebar-foreground tracking-tight whitespace-nowrap overflow-hidden">
             Kopi Kita
@@ -156,9 +151,11 @@ export function AppSidebar({
             isCollapsed ? "justify-center" : "gap-3 px-2"
           }`}
         >
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#D4A574] to-[#A67C52] flex items-center justify-center shrink-0">
-            <span className="text-white text-[0.7rem] font-semibold">{initials}</span>
-          </div>
+          <img
+            src="/kopikita.webp"
+            alt={userName}
+            className="w-9 h-9 rounded-full object-cover shrink-0 ring-2 ring-[#D4A574]/30"
+          />
           {!isCollapsed && (
             <>
               <div className="flex-1 min-w-0">

@@ -47,12 +47,6 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
 
   const userName = session?.user?.name || "User";
-  const initials = userName
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
 
   const getMeta = () => {
     if (pathname === "/") {
@@ -145,11 +139,11 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                 )}
               </button>
               <div className="w-px h-6 bg-border/50 mx-0.5 sm:mx-1 hidden sm:block" />
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#D4A574] to-[#A67C52] items-center justify-center cursor-pointer hidden sm:flex">
-                <span className="text-white text-[0.6rem] font-semibold">
-                  {initials}
-                </span>
-              </div>
+              <img
+                src="/kopikita.webp"
+                alt="Profile"
+                className="w-8 h-8 rounded-full object-cover cursor-pointer hidden sm:block ring-2 ring-[#D4A574]/30"
+              />
             </div>
           </div>
         </header>

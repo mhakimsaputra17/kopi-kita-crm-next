@@ -1,16 +1,19 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { PanelLeftClose, PanelLeft } from "lucide-react";
 import { ChatSidebar, type ConversationItem } from "./chat-sidebar";
 import { ChatContent } from "./chat-content";
 
-export function ChatLayout() {
+interface ChatLayoutProps {
+  conversationId: string | null;
+}
+
+export function ChatLayout({ conversationId }: ChatLayoutProps) {
+  const router = useRouter();
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
-  const [activeConvoId, setActiveConvoId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  // Key to force ChatContent remount on "new chat" even if already null
-  const [chatKey, setChatKey] = useState(0);
 
   // Fetch conversation list
   const fetchConversations = useCallback(async () => {
@@ -29,16 +32,20 @@ export function ChatLayout() {
     fetchConversations();
   }, [fetchConversations]);
 
-  // New chat — deselect active, ChatContent will start fresh
+  // New chat — navigate to /chat (no ID)
   const handleNewChat = useCallback(() => {
-    setActiveConvoId(null);
-    setChatKey((k) => k + 1); // force remount even if already null
-  }, []);
+    router.push("/chat");
+  }, [router]);
 
-  // Select existing conversation
-  const handleSelect = useCallback((id: string) => {
-    setActiveConvoId(id);
-  }, []);
+  // Select existing conversation — navigate to /chat/[id]
+  const handleSelect = useCallback(
+    (id: string) => {
+      if (id !== conversationId) {
+        router.push(`/chat/${id}`);
+      }
+    },
+    [router, conversationId],
+  );
 
   // Rename
   const handleRename = useCallback(async (id: string, title: string) => {
@@ -57,16 +64,21 @@ export function ChatLayout() {
     async (id: string) => {
       await fetch(`/api/conversations/${id}`, { method: "DELETE" });
       setConversations((prev) => prev.filter((c) => c.id !== id));
-      if (activeConvoId === id) setActiveConvoId(null);
+      if (conversationId === id) {
+        router.push("/chat");
+      }
     },
-    [activeConvoId],
+    [conversationId, router],
   );
 
   // Called by ChatContent when a new conversation is created via chat
   const handleConversationCreated = useCallback(
     (newId: string) => {
-      setActiveConvoId(newId);
-      fetchConversations(); // refresh list
+      // Shallow URL update — change browser URL without triggering Next.js
+      // navigation or React re-render. This prevents the ChatContent from
+      // unmounting/remounting mid-stream (same pattern as ChatGPT/Claude).
+      window.history.replaceState(null, "", `/chat/${newId}`);
+      fetchConversations(); // refresh sidebar list
     },
     [fetchConversations],
   );
@@ -81,7 +93,7 @@ export function ChatLayout() {
       >
         <ChatSidebar
           conversations={conversations}
-          activeId={activeConvoId}
+          activeId={conversationId}
           onSelect={handleSelect}
           onNewChat={handleNewChat}
           onRename={handleRename}
@@ -106,9 +118,12 @@ export function ChatLayout() {
           </button>
         </div>
 
+        {/* key = conversationId forces full remount on conversation switch.
+            For new chats (null), use stable "__new__" so shallow URL updates
+            after first AI response don't cause a remount. */}
         <ChatContent
-          key={chatKey}
-          conversationId={activeConvoId}
+          key={conversationId ?? "__new__"}
+          conversationId={conversationId}
           onConversationCreated={handleConversationCreated}
         />
       </div>

@@ -9,8 +9,6 @@ import {
   Lock,
   Eye,
   EyeOff,
-  Coffee,
-  Sparkles,
   ArrowRight,
 } from "lucide-react";
 
@@ -73,74 +71,39 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
-      {/* Left Panel: Brand */}
-      <div
-        className="relative lg:w-[55%] flex flex-col items-center justify-center px-8 py-16 lg:py-0 overflow-hidden"
-        style={{
-          background:
-            "linear-gradient(165deg, #FFF8F0 0%, #FFF2E5 50%, #FDEBD4 100%)",
-        }}
-      >
-        {/* Coffee bean pattern */}
-        <div className="absolute inset-0 pointer-events-none opacity-[0.045]">
-          <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <pattern
-                id="login-beans"
-                x="0"
-                y="0"
-                width="90"
-                height="90"
-                patternUnits="userSpaceOnUse"
-              >
-                <ellipse cx="22" cy="22" rx="8" ry="11" fill="#3C2415" transform="rotate(-30 22 22)" />
-                <line x1="17.5" y1="15" x2="26.5" y2="29" stroke="#FFF8F0" strokeWidth="1.3" transform="rotate(-30 22 22)" />
-                <ellipse cx="62" cy="60" rx="8" ry="11" fill="#3C2415" transform="rotate(25 62 60)" />
-                <line x1="57.5" y1="53" x2="66.5" y2="67" stroke="#FFF8F0" strokeWidth="1.3" transform="rotate(25 62 60)" />
-                <ellipse cx="68" cy="18" rx="5.5" ry="7.5" fill="#3C2415" transform="rotate(-15 68 18)" />
-                <line x1="65" y1="13" x2="71" y2="23" stroke="#FFF8F0" strokeWidth="1" transform="rotate(-15 68 18)" />
-                <ellipse cx="25" cy="68" rx="5" ry="7" fill="#3C2415" transform="rotate(40 25 68)" />
-                <line x1="22.5" y1="63.5" x2="27.5" y2="72.5" stroke="#FFF8F0" strokeWidth="1" transform="rotate(40 25 68)" />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#login-beans)" />
-          </svg>
-        </div>
+      {/* Left Panel: Brand with Coffee Image */}
+      <div className="hidden lg:flex lg:w-[55%] relative items-center justify-center overflow-hidden">
+        {/* Background image */}
+        <img
+          src="/coffee.webp"
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover"
+        />
 
-        {/* Decorative warm circles */}
-        <div className="absolute top-[15%] left-[10%] w-64 h-64 rounded-full bg-[#D4A574]/[0.06] blur-3xl" />
-        <div className="absolute bottom-[20%] right-[8%] w-48 h-48 rounded-full bg-[#D4A574]/[0.08] blur-2xl" />
+        {/* Dark cinematic overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-black/30" />
 
-        {/* Brand content */}
-        <div className="relative z-10 text-center max-w-md">
-          <div className="flex items-center justify-center gap-3.5 mb-6">
-            <div className="w-12 h-12 rounded-[14px] bg-[#3C2415] flex items-center justify-center shadow-lg shadow-[#3C2415]/15">
-              <Coffee className="w-6 h-6 text-[#D4A574]" />
-            </div>
-          </div>
-          <h1 className="font-display text-[#3C2415] text-[2.75rem] font-bold leading-none tracking-tight mb-3">
+        {/* Warm tint overlay */}
+        <div className="absolute inset-0 bg-[#3C2415]/20 mix-blend-multiply" />
+
+        {/* Brand text overlay */}
+        <div className="relative z-10 text-center">
+          <h1 className="font-display text-[#FFF8F0] text-[3.5rem] font-bold leading-none tracking-[0.04em] drop-shadow-[0_2px_12px_rgba(0,0,0,0.5)]">
             Kopi Kita
           </h1>
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="w-8 h-px bg-[#D4A574]/40" />
-            <div className="w-1.5 h-1.5 rounded-full bg-[#D4A574]/50" />
-            <div className="w-8 h-px bg-[#D4A574]/40" />
+          <div className="flex items-center justify-center gap-3 mt-4 mb-4">
+            <div className="w-10 h-px bg-[#D4A574]/60" />
+            <div className="w-1.5 h-1.5 rounded-full bg-[#D4A574]/70" />
+            <div className="w-10 h-px bg-[#D4A574]/60" />
           </div>
-          <div className="flex items-center justify-center gap-2 mb-3">
-            <Sparkles className="w-4 h-4 text-[#D4A574]" />
-            <p className="text-[#3C2415]/70 text-[1rem] tracking-wide">
-              AI-Powered Promo Helper
-            </p>
-          </div>
-          <p className="text-[#3C2415]/40 text-[0.8rem]">
-            Manage customers, craft smart campaigns,
-            <br />
-            and grow your coffee business.
+          <p className="text-[#FFF8F0]/60 text-[0.85rem] tracking-[0.15em] uppercase">
+            AI-Powered Promo Helper
           </p>
         </div>
 
-        <div className="absolute bottom-6 left-0 right-0 text-center">
-          <p className="text-[#3C2415]/25 text-[0.7rem]">
+        {/* Footer */}
+        <div className="absolute bottom-6 left-0 right-0 text-center z-10">
+          <p className="text-[#FFF8F0]/30 text-[0.7rem]">
             &copy; 2026 Kopi Kita. Crafted with ☕
           </p>
         </div>

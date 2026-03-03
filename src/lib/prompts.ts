@@ -30,7 +30,21 @@ RULES:
 4. "Why now" harus spesifik merujuk ke data (bukan generik)
 5. Format pesan harus siap copy-paste ke WhatsApp
 
-OUTPUT FORMAT: JSON sesuai schema yang diberikan.
+OUTPUT FORMAT: Respond ONLY with valid JSON matching this EXACT structure (use these exact field names):
+{
+  "campaigns": [
+    {
+      "theme": "Nama tema promo (string)",
+      "segment": "Nama segmen target (string)",
+      "customerCount": 10,
+      "whyNow": "Alasan kenapa promo ini relevan sekarang (string)",
+      "message": "Pesan WhatsApp siap kirim (string)",
+      "timeWindow": "Periode promo, misal: Sabtu-Minggu (string, optional)"
+    }
+  ]
+}
+
+IMPORTANT: Use EXACTLY these field names: theme, segment, customerCount, whyNow, message, timeWindow. Do NOT use other names.
   `.trim();
 }
 

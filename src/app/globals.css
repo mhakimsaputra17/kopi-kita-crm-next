@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -134,4 +135,75 @@
   h1, h2, h3 {
     font-family: 'Playfair Display', serif;
   }
+}
+
+/* ─── Kopi Kita prose theme (Tailwind Typography) ─── */
+@layer components {
+  .prose-kopi {
+    /* Kopi Kita brand colors via Typography CSS variables */
+    --tw-prose-body: var(--foreground);
+    --tw-prose-headings: var(--foreground);
+    --tw-prose-lead: var(--muted-foreground);
+    --tw-prose-links: #D4A574;
+    --tw-prose-bold: var(--foreground);
+    --tw-prose-counters: #D4A574;
+    --tw-prose-bullets: #D4A574;
+    --tw-prose-hr: rgba(212, 165, 116, 0.25);
+    --tw-prose-quotes: var(--foreground);
+    --tw-prose-quote-borders: #D4A574;
+    --tw-prose-captions: var(--muted-foreground);
+    --tw-prose-code: var(--foreground);
+    --tw-prose-pre-code: var(--foreground);
+    --tw-prose-pre-bg: var(--muted);
+    --tw-prose-th-borders: #D4A574;
+    --tw-prose-td-borders: var(--border);
+  }
+
+  /* Headings — DM Sans (not serif), better size hierarchy */
+  .prose-kopi :is(h1, h2, h3, h4) {
+    @apply font-sans tracking-tight;
+  }
+  .prose-kopi h1 { @apply text-lg font-bold; }
+  .prose-kopi h2 { @apply text-base font-bold mt-6 mb-3; }
+  .prose-kopi h3 { @apply text-[0.95rem] font-semibold mt-5 mb-2; }
+  .prose-kopi h4 { @apply text-sm font-semibold mt-4 mb-1.5; }
+
+  /* Strong — slightly bolder */
+  .prose-kopi strong { @apply font-semibold; }
+
+  /* Links — underline offset + hover */
+  .prose-kopi a { @apply underline-offset-2 decoration-[#D4A574]/40 transition-colors; }
+  .prose-kopi a:hover { @apply text-[#A67C52] decoration-[#A67C52]; }
+
+  /* Blockquote — WhatsApp-style accent card */
+  .prose-kopi blockquote {
+    @apply bg-[#D4A574]/5 not-italic rounded-r-lg border-l-[3px] border-l-[#D4A574] py-2.5 px-3.5;
+  }
+  .prose-kopi blockquote p { @apply my-1 first:mt-0 last:mb-0; }
+
+  /* Inline code — muted chip */
+  .prose-kopi :not(pre) > code {
+    @apply bg-muted rounded px-1.5 py-0.5 text-[0.88em] font-medium before:content-[''] after:content-[''];
+  }
+
+  /* Code blocks — bordered card */
+  .prose-kopi pre {
+    @apply bg-muted border border-border rounded-lg text-[0.85em] leading-relaxed;
+  }
+
+  /* Tables — zebra rows + accent header */
+  .prose-kopi thead { @apply border-b-2 border-b-[#D4A574]; }
+  .prose-kopi th { @apply text-left font-semibold text-foreground px-3 py-2 text-[0.88em]; }
+  .prose-kopi td { @apply px-3 py-2 text-[0.88em] border-b border-border; }
+  .prose-kopi tbody tr:nth-child(even) { @apply bg-muted/30; }
+  .prose-kopi tbody tr:last-child td { @apply border-b-0; }
+
+  /* HR — section divider with accent */
+  .prose-kopi hr { @apply border-t-2 border-[#D4A574]/20 my-5; }
+
+  /* Lists — comfortable spacing */
+  .prose-kopi :is(ul, ol) { @apply my-2; }
+  .prose-kopi li { @apply my-0.5; }
+  .prose-kopi ul ul { @apply list-[circle]; }
+  .prose-kopi ul ul ul { @apply list-[square]; }
 }

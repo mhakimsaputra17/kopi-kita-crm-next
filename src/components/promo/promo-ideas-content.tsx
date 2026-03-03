@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Sparkles,
   Copy,
@@ -13,6 +13,7 @@ import {
   TrendingUp,
   Loader2,
   Instagram,
+  AlertCircle,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -34,19 +35,16 @@ interface PromoIdea {
   badgeText: string;
 }
 
-// ─── Mock Data ───
-const promoIdeas: PromoIdea[] = [
+interface PromoMeta {
+  totalCustomers: number;
+  topTags: { tag: string; count: number }[];
+  model: string;
+  generatedAt: string;
+}
+
+// ─── Color Palettes (cycling for AI-generated campaigns) ───
+const PALETTES = [
   {
-    id: 1,
-    title: "Caramel Week",
-    emoji: "🍫",
-    customersTargeted: 42,
-    segment: "Pelanggan dengan tag 'sweet drinks' atau 'caramel'",
-    whyNow: "Minat sweet drinks adalah grup terbesar bulan ini",
-    message:
-      "Hi! New Caramel Cold Brew is in this week—get 10% off till Sunday. Mau coba besok pagi? ☕",
-    timeWindow: "Morning rush (7–10 AM)",
-    timeEmoji: "🕐",
     gradientFrom: "#D4A574",
     gradientTo: "#C4956A",
     accentBg: "rgba(212,165,116,0.1)",
@@ -54,16 +52,6 @@ const promoIdeas: PromoIdea[] = [
     badgeText: "text-[#A67C52] dark:text-[#D4A574]",
   },
   {
-    id: 2,
-    title: "Pastry + Coffee Bundle",
-    emoji: "🥐",
-    customersTargeted: 18,
-    segment: "Pastry lovers + morning coffee buyers",
-    whyNow: "Minat pastry meningkat di hari kerja",
-    message:
-      "Coba latte + croissant bundle, hemat 10k. Berlaku 7–11 pagi. Mau saya simpanin? 🥐",
-    timeWindow: "Weekday mornings",
-    timeEmoji: "🕐",
     gradientFrom: "#C27A8A",
     gradientTo: "#A8606E",
     accentBg: "rgba(194,122,138,0.1)",
@@ -71,16 +59,6 @@ const promoIdeas: PromoIdea[] = [
     badgeText: "text-[#A0524D] dark:text-[#D4908A]",
   },
   {
-    id: 3,
-    title: "Oat Milk Monday",
-    emoji: "🥛",
-    customersTargeted: 15,
-    segment: "Oat milk & healthy drinks enthusiasts",
-    whyNow: "Tren healthy drinks meningkat stabil minggu ini",
-    message:
-      "Happy Monday! Semua menu oat milk diskon 15% hari ini aja. Udah coba Oat Latte kita? 🌿",
-    timeWindow: "Senin sepanjang hari",
-    timeEmoji: "🕐",
     gradientFrom: "#8B9D77",
     gradientTo: "#6B7D57",
     accentBg: "rgba(139,157,119,0.1)",
@@ -89,11 +67,49 @@ const promoIdeas: PromoIdea[] = [
   },
 ];
 
-const insightPills = [
-  { label: "23 suka sweet drinks", dotColor: "#D4A574" },
-  { label: "18 oat milk fans", dotColor: "#8B9D77" },
-  { label: "15 pastry lovers", dotColor: "#C27A8A" },
-];
+const INSIGHT_DOT_COLORS = ["#D4A574", "#8B9D77", "#C27A8A", "#3B82F6", "#A78BFA"];
+
+// ─── Theme → Emoji mapping ───
+function getThemeEmoji(theme: string): string {
+  const t = theme.toLowerCase();
+  if (t.includes("caramel") || t.includes("coklat") || t.includes("chocolate")) return "🍫";
+  if (t.includes("pastry") || t.includes("croissant") || t.includes("roti")) return "🥐";
+  if (t.includes("oat") || t.includes("susu") || t.includes("milk")) return "🥛";
+  if (t.includes("ice") || t.includes("es") || t.includes("cold")) return "🧊";
+  if (t.includes("matcha") || t.includes("tea") || t.includes("teh")) return "🍵";
+  if (t.includes("morning") || t.includes("pagi")) return "🌅";
+  if (t.includes("weekend") || t.includes("minggu")) return "🎉";
+  if (t.includes("latte") || t.includes("coffee") || t.includes("kopi")) return "☕";
+  if (t.includes("sweet") || t.includes("manis")) return "🍬";
+  if (t.includes("bundle") || t.includes("paket")) return "🎁";
+  if (t.includes("diskon") || t.includes("promo") || t.includes("sale")) return "🏷️";
+  if (t.includes("fruit") || t.includes("buah")) return "🍓";
+  return "☕";
+}
+
+function mapCampaignsToIdeas(
+  campaigns: {
+    theme: string;
+    segment: string;
+    customerCount: number;
+    whyNow: string;
+    message: string;
+    timeWindow?: string;
+  }[],
+): PromoIdea[] {
+  return campaigns.map((c, i) => ({
+    id: i + 1,
+    title: c.theme,
+    emoji: getThemeEmoji(c.theme),
+    customersTargeted: c.customerCount,
+    segment: c.segment,
+    whyNow: c.whyNow,
+    message: c.message,
+    timeWindow: c.timeWindow ?? "Fleksibel",
+    timeEmoji: "🕐",
+    ...PALETTES[i % PALETTES.length],
+  }));
+}
 
 // ─── WhatsApp SVG Icon ───
 function WhatsAppIcon({ className }: { className?: string }) {
@@ -342,29 +358,210 @@ function LoadingState() {
   );
 }
 
+// ─── Error State ───
+function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+      <div className="w-14 h-14 rounded-2xl bg-red-500/10 flex items-center justify-center mb-4">
+        <AlertCircle className="w-7 h-7 text-red-500" />
+      </div>
+      <p className="text-sm text-foreground/70 mb-4 max-w-md">{message}</p>
+      <button
+        onClick={onRetry}
+        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border border-border/40 text-foreground hover:bg-secondary transition-colors cursor-pointer"
+      >
+        <RefreshCw className="w-4 h-4" />
+        Coba Lagi
+      </button>
+    </div>
+  );
+}
+
+// ─── Empty State (first visit, before generation) ───
+function EmptyState({ onGenerate, isGenerating }: { onGenerate: () => void; isGenerating: boolean }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+      <div className="w-14 h-14 rounded-2xl bg-[#D4A574]/10 flex items-center justify-center mb-4">
+        <Sparkles className="w-7 h-7 text-[#D4A574]" />
+      </div>
+      <h3 className="font-display text-lg font-semibold text-foreground mb-2">
+        AI Promo Ideas
+      </h3>
+      <p className="text-sm text-muted-foreground mb-6 max-w-md">
+        Klik tombol di bawah untuk generate ide promo berdasarkan data pelanggan Kopi Kita.
+      </p>
+      <button
+        onClick={onGenerate}
+        disabled={isGenerating}
+        className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-medium transition-colors cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-[#D4A574]/20"
+        style={{
+          background: "linear-gradient(135deg, #D4A574 0%, #A67C52 100%)",
+        }}
+      >
+        {isGenerating ? (
+          <>
+            <Loader2 className="w-4 h-4 motion-safe:animate-spin" />
+            Generating…
+          </>
+        ) : (
+          <>
+            <Sparkles className="w-4 h-4" />
+            Generate Promo Ideas
+          </>
+        )}
+      </button>
+    </div>
+  );
+}
+
 // ─── Main Component ───
 export function PromoIdeasContent() {
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedAt, setGeneratedAt] = useState("2 menit lalu");
-  const [showCards, setShowCards] = useState(true);
-  const [activeId, setActiveId] = useState(promoIdeas[0].id);
+  const [isLoading, setIsLoading] = useState(true); // loading from DB
+  const [ideas, setIdeas] = useState<PromoIdea[]>([]);
+  const [meta, setMeta] = useState<PromoMeta | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [generatedAt, setGeneratedAt] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState(1);
 
-  const handleGenerate = () => {
+  // Handle API response (shared between load & generate)
+  const handleApiResponse = useCallback(
+    (data: { campaigns: Array<{ theme: string; segment: string; customerCount: number; whyNow: string; message: string; timeWindow?: string }>; meta: PromoMeta | null }) => {
+      if (data.campaigns.length === 0) return false;
+      const mapped = mapCampaignsToIdeas(data.campaigns);
+      setIdeas(mapped);
+      setMeta(data.meta);
+      setActiveId(mapped[0]?.id ?? 1);
+      if (data.meta?.generatedAt) {
+        const date = new Date(data.meta.generatedAt);
+        const diff = Date.now() - date.getTime();
+        const mins = Math.floor(diff / 60000);
+        if (mins < 1) setGeneratedAt("baru saja");
+        else if (mins < 60) setGeneratedAt(`${mins} menit lalu`);
+        else {
+          const hours = Math.floor(mins / 60);
+          setGeneratedAt(`${hours} jam lalu`);
+        }
+      }
+      return true;
+    },
+    [],
+  );
+
+  // Load latest from DB on mount (Opsi B)
+  useEffect(() => {
+    async function loadFromDB() {
+      try {
+        const res = await fetch("/api/promo/generate");
+        if (!res.ok) return;
+        const data = await res.json();
+        handleApiResponse(data);
+      } catch {
+        // Silently fail — user can generate manually
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadFromDB();
+  }, [handleApiResponse]);
+
+  // Generate new promo ideas via AI
+  const handleGenerate = useCallback(async () => {
     setIsGenerating(true);
-    setShowCards(false);
-    setTimeout(() => {
-      setShowCards(true);
-      setIsGenerating(false);
-      setGeneratedAt("baru saja");
-      setActiveId(promoIdeas[0].id);
-    }, 2500);
-  };
+    setError(null);
 
-  const activeIdea = promoIdeas.find((p) => p.id === activeId) ?? promoIdeas[0];
-  const totalReach = promoIdeas.reduce((sum, p) => sum + p.customersTargeted, 0);
+    try {
+      const res = await fetch("/api/promo/generate", { method: "POST" });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(
+          data.error || `Gagal generate promo (${res.status})`,
+        );
+      }
+
+      const data = await res.json();
+      handleApiResponse(data);
+      setGeneratedAt("baru saja");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Terjadi kesalahan");
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [handleApiResponse]);
+
+  const activeIdea = ideas.find((p) => p.id === activeId) ?? ideas[0];
+  const totalReach = ideas.reduce((sum, p) => sum + p.customersTargeted, 0);
+
+  // Dynamic insight pills from API metadata
+  const insightPills = (meta?.topTags ?? []).map((t, i) => ({
+    label: `${t.count} ${t.tag}`,
+    dotColor: INSIGHT_DOT_COLORS[i % INSIGHT_DOT_COLORS.length],
+  }));
+
+  // Show states
+  if (isLoading) {
+    return (
+      <div className="py-1 sm:py-2 max-w-[1400px] mx-auto w-full">
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <div className="flex items-center gap-4">
+            <button
+              disabled
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-medium opacity-70 cursor-not-allowed shrink-0"
+              style={{
+                background: "linear-gradient(135deg, #D4A574 0%, #A67C52 100%)",
+              }}
+            >
+              <Loader2 className="w-4 h-4 motion-safe:animate-spin" />
+              Memuat…
+            </button>
+          </div>
+        </div>
+        <LoadingState />
+      </div>
+    );
+  }
+
+  if (ideas.length === 0 && !isGenerating) {
+    return (
+      <div className="py-1 sm:py-2 max-w-[1400px] mx-auto w-full">
+        <EmptyState onGenerate={handleGenerate} isGenerating={isGenerating} />
+      </div>
+    );
+  }
+
+  if (isGenerating && ideas.length === 0) {
+    return (
+      <div className="py-1 sm:py-2 max-w-[1400px] mx-auto w-full">
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <div className="flex items-center gap-4">
+            <button
+              disabled
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-medium opacity-70 cursor-not-allowed shrink-0"
+              style={{
+                background: "linear-gradient(135deg, #D4A574 0%, #A67C52 100%)",
+              }}
+            >
+              <Loader2 className="w-4 h-4 motion-safe:animate-spin" />
+              Generating…
+            </button>
+          </div>
+        </div>
+        <LoadingState />
+      </div>
+    );
+  }
 
   return (
     <div className="py-1 sm:py-2 max-w-[1400px] mx-auto w-full">
+      {/* Error banner (when regeneration fails but we have previous data) */}
+      {error && (
+        <div className="mb-4 flex items-center gap-2 px-4 py-3 rounded-xl bg-red-500/5 border border-red-500/10 text-sm text-red-600 dark:text-red-400">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-4">
@@ -410,11 +607,13 @@ export function PromoIdeasContent() {
       </div>
 
       {/* Master-Detail Layout */}
-      {showCards ? (
+      {isGenerating ? (
+        <LoadingState />
+      ) : (
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-5">
           {/* Left: Featured Card (60%) */}
           <div className="lg:col-span-3">
-            <FeaturedCard idea={activeIdea} />
+            {activeIdea && <FeaturedCard idea={activeIdea} />}
           </div>
 
           {/* Right: Sidebar (40%) */}
@@ -427,7 +626,7 @@ export function PromoIdeasContent() {
                 </span>
               </div>
               <div className="divide-y divide-border/20">
-                {promoIdeas.map((idea) => {
+                {ideas.map((idea) => {
                   const isActive = idea.id === activeId;
                   return (
                     <button
@@ -489,39 +688,41 @@ export function PromoIdeasContent() {
                     <div className="w-2 h-2 rounded-full bg-[#8B9D77]" />
                     <span className="text-sm text-muted-foreground">Kampanye siap</span>
                   </div>
-                  <span className="text-sm font-semibold text-foreground tabular-nums">{promoIdeas.length}</span>
+                  <span className="text-sm font-semibold text-foreground tabular-nums">{ideas.length}</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-[#3C2415] dark:bg-[#C4956A]" />
-                    <span className="text-sm text-muted-foreground">Est. response rate</span>
+                {meta && (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-[#3C2415] dark:bg-[#C4956A]" />
+                      <span className="text-sm text-muted-foreground">Total pelanggan</span>
+                    </div>
+                    <span className="text-sm font-semibold text-foreground tabular-nums">{meta.totalCustomers}</span>
                   </div>
-                  <span className="text-sm font-semibold text-foreground">~24%</span>
-                </div>
+                )}
               </div>
             </div>
 
-            {/* Data Insight */}
-            <div className="bg-card rounded-xl border border-border/40 p-4">
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">
-                Data Insight
-              </span>
-              <div className="mt-3 space-y-2.5">
-                {insightPills.map((pill, i) => (
-                  <div key={i} className="flex items-center gap-2.5">
-                    <span
-                      className="w-2 h-2 rounded-full shrink-0"
-                      style={{ backgroundColor: pill.dotColor }}
-                    />
-                    <span className="text-sm text-foreground/70">{pill.label}</span>
-                  </div>
-                ))}
+            {/* Data Insight (dynamic from API) */}
+            {insightPills.length > 0 && (
+              <div className="bg-card rounded-xl border border-border/40 p-4">
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">
+                  Data Insight
+                </span>
+                <div className="mt-3 space-y-2.5">
+                  {insightPills.map((pill, i) => (
+                    <div key={i} className="flex items-center gap-2.5">
+                      <span
+                        className="w-2 h-2 rounded-full shrink-0"
+                        style={{ backgroundColor: pill.dotColor }}
+                      />
+                      <span className="text-sm text-foreground/70">{pill.label}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
-      ) : (
-        <LoadingState />
       )}
     </div>
   );

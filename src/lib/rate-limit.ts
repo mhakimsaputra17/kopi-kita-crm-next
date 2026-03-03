@@ -8,10 +8,11 @@ import { Ratelimit } from "@upstash/ratelimit";
 import { redis } from "@/lib/redis";
 
 // Pre-configured limiters for different endpoints
+// GitHub Models free tier: ~10 req/min/model. Use dual window to stay safe.
 const limiters = {
   chat: new Ratelimit({
     redis,
-    limiter: Ratelimit.slidingWindow(20, "600 s"),
+    limiter: Ratelimit.slidingWindow(8, "60 s"), // 8/min — stay under GitHub's ~10/min
     prefix: "ratelimit:chat",
   }),
   promo: new Ratelimit({

@@ -12,6 +12,20 @@ import {
   BarChart3,
   Heart,
   AlertCircle,
+  Search,
+  Users,
+  Lightbulb,
+  Tag,
+  MessageSquare,
+  PenLine,
+  Wrench,
+  Sparkles,
+  GitCompareArrows,
+  CupSoda,
+  History,
+  Crown,
+  PieChart,
+  Target,
 } from "lucide-react";
 import {
   Conversation,
@@ -33,13 +47,37 @@ import {
   PromptInputBody,
   PromptInputFooter,
   PromptInputTools,
+  PromptInputButton,
   type PromptInputMessage,
 } from "@/components/ai-elements/prompt-input";
 import {
   Suggestion,
   Suggestions,
 } from "@/components/ai-elements/suggestion";
-import { Shimmer } from "@/components/ai-elements/shimmer";
+import {
+  ChainOfThought,
+  ChainOfThoughtContent,
+  ChainOfThoughtHeader,
+  ChainOfThoughtStep,
+} from "@/components/ai-elements/chain-of-thought";
+import { ModelSelector } from "@/components/chat/model-selector";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from "@/components/ui/command";
+import { AVAILABLE_MODELS, DEFAULT_MODEL } from "@/lib/ai-models";
+import type { AIModel } from "@/lib/ai-models";
+import type { LucideIcon } from "lucide-react";
 
 // ─── Types ───
 interface ChatMsg {
@@ -49,13 +87,268 @@ interface ChatMsg {
   error?: boolean;
 }
 
-const suggestedPrompts: { text: string; icon: React.ReactNode }[] = [
-  { text: "Top tren minggu ini", icon: <TrendingUp className="size-3.5" /> },
-  { text: "Siapa pelanggan baru?", icon: <UserPlus className="size-3.5" /> },
-  { text: "Buat promo untuk weekend", icon: <CalendarDays className="size-3.5" /> },
-  { text: "Analisis segmen terbesar", icon: <BarChart3 className="size-3.5" /> },
-  { text: "Pelanggan caramel lovers", icon: <Heart className="size-3.5" /> },
+interface ToolEvent {
+  name: string;
+  status: "executing" | "done";
+}
+
+const TOOL_DISPLAY: Record<string, { icon: LucideIcon; label: string }> = {
+  generate_promo: { icon: Sparkles, label: "Membuat ide promo..." },
+  search_customers: { icon: Search, label: "Mencari pelanggan..." },
+  get_customer_stats: { icon: BarChart3, label: "Mengambil statistik..." },
+  analyze_segments: { icon: PieChart, label: "Menganalisis segmen..." },
+  get_customer_growth: { icon: TrendingUp, label: "Mengambil data pertumbuhan..." },
+  get_promo_history: { icon: History, label: "Mengambil riwayat promo..." },
+  find_top_customers: { icon: Crown, label: "Mencari pelanggan terbaik..." },
+  compare_segments: { icon: GitCompareArrows, label: "Membandingkan segmen..." },
+  get_drink_analysis: { icon: CupSoda, label: "Menganalisis minuman..." },
+  suggest_new_promo: { icon: Target, label: "Mencari peluang promo baru..." },
+};
+
+// ─── Tool Catalog for tool picker ───
+interface ToolCatalogItem {
+  id: string;
+  icon: LucideIcon;
+  name: string;
+  description: string;
+  prompt: string;
+  group: "data" | "promo";
+}
+
+const TOOL_CATALOG: ToolCatalogItem[] = [
+  // Data & Analisis
+  {
+    id: "get_customer_stats",
+    icon: BarChart3,
+    name: "Statistik Pelanggan",
+    description: "Total pelanggan, tag populer, minuman favorit",
+    prompt: "Tampilkan statistik pelanggan keseluruhan",
+    group: "data",
+  },
+  {
+    id: "search_customers",
+    icon: Search,
+    name: "Cari Pelanggan",
+    description: "Cari pelanggan berdasarkan nama, tag, atau minuman",
+    prompt: "Daftar semua pelanggan",
+    group: "data",
+  },
+  {
+    id: "analyze_segments",
+    icon: PieChart,
+    name: "Analisis Segmen",
+    description: "Deep dive segmen: top drinks, related tags, member",
+    prompt: "Analisis segmen sweet drinks",
+    group: "data",
+  },
+  {
+    id: "get_customer_growth",
+    icon: TrendingUp,
+    name: "Pertumbuhan Pelanggan",
+    description: "Timeline pertumbuhan harian/mingguan",
+    prompt: "Tampilkan pertumbuhan pelanggan minggu ini",
+    group: "data",
+  },
+  {
+    id: "find_top_customers",
+    icon: Crown,
+    name: "Pelanggan Terbaik",
+    description: "Ranking pelanggan paling aktif & loyal",
+    prompt: "Siapa 5 pelanggan paling loyal?",
+    group: "data",
+  },
+  {
+    id: "compare_segments",
+    icon: GitCompareArrows,
+    name: "Bandingkan Segmen",
+    description: "Bandingkan 2 segmen: jumlah, drinks, overlap",
+    prompt: "Bandingkan segmen oat milk vs caramel",
+    group: "data",
+  },
+  {
+    id: "get_drink_analysis",
+    icon: CupSoda,
+    name: "Analisis Minuman",
+    description: "Ranking minuman populer dengan tags & pelanggan",
+    prompt: "Tampilkan analisis minuman terlaris",
+    group: "data",
+  },
+  // Promo & Kampanye
+  {
+    id: "generate_promo",
+    icon: Sparkles,
+    name: "Generate Promo",
+    description: "Buat 2-3 kampanye promo AI berdasarkan data",
+    prompt: "Buatkan ide promo untuk minggu ini",
+    group: "promo",
+  },
+  {
+    id: "get_promo_history",
+    icon: History,
+    name: "Riwayat Promo",
+    description: "Lihat semua promo yang pernah dibuat",
+    prompt: "Tampilkan riwayat promo yang sudah dibuat",
+    group: "promo",
+  },
+  {
+    id: "suggest_new_promo",
+    icon: Target,
+    name: "Saran Promo Baru",
+    description: "Cari segmen yang belum pernah dipromo",
+    prompt: "Segmen mana yang belum pernah dipromo?",
+    group: "promo",
+  },
 ];
+
+// ─── Tool Picker Component ───
+function ToolPicker({
+  onSelect,
+  disabled,
+}: {
+  onSelect: (prompt: string) => void;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const dataTools = TOOL_CATALOG.filter((t) => t.group === "data");
+  const promoTools = TOOL_CATALOG.filter((t) => t.group === "promo");
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <PromptInputButton
+          tooltip="Panggil Tool"
+          disabled={disabled}
+          variant={open ? "default" : "ghost"}
+          onClick={() => setOpen(!open)}
+        >
+          <Wrench className="size-4" />
+          <span className="hidden sm:inline text-xs">Tools</span>
+        </PromptInputButton>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-[320px] p-0"
+        side="top"
+        align="start"
+        sideOffset={8}
+      >
+        <Command>
+          <CommandInput placeholder="Cari tool..." />
+          <CommandList>
+            <CommandEmpty>Tool tidak ditemukan.</CommandEmpty>
+            <CommandGroup heading="📊 Data & Analisis">
+              {dataTools.map((tool) => {
+                const Icon = tool.icon;
+                return (
+                  <CommandItem
+                    key={tool.id}
+                    onSelect={() => {
+                      onSelect(tool.prompt);
+                      setOpen(false);
+                    }}
+                    className="flex items-start gap-2.5 py-2"
+                  >
+                    <div className="mt-0.5 p-1 rounded bg-[#D4A574]/10">
+                      <Icon className="size-3.5 text-[#A67C52]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium leading-tight">{tool.name}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 leading-tight">{tool.description}</p>
+                    </div>
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+            <CommandSeparator />
+            <CommandGroup heading="🎯 Promo & Kampanye">
+              {promoTools.map((tool) => {
+                const Icon = tool.icon;
+                return (
+                  <CommandItem
+                    key={tool.id}
+                    onSelect={() => {
+                      onSelect(tool.prompt);
+                      setOpen(false);
+                    }}
+                    className="flex items-start gap-2.5 py-2"
+                  >
+                    <div className="mt-0.5 p-1 rounded bg-[#D4A574]/10">
+                      <Icon className="size-3.5 text-[#A67C52]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium leading-tight">{tool.name}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 leading-tight">{tool.description}</p>
+                    </div>
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+const ALL_SUGGESTIONS: { text: string; icon: React.ReactNode }[] = [
+  // Data & Statistik
+  { text: "Top tren minggu ini", icon: <TrendingUp className="size-3.5" /> },
+  { text: "Berapa total pelanggan sekarang?", icon: <Users className="size-3.5" /> },
+  { text: "Ringkasan bisnis hari ini", icon: <BarChart3 className="size-3.5" /> },
+  { text: "Pertumbuhan pelanggan bulan ini", icon: <TrendingUp className="size-3.5" /> },
+
+  // Pelanggan
+  { text: "Siapa pelanggan baru minggu ini?", icon: <UserPlus className="size-3.5" /> },
+  { text: "Pelanggan paling loyal", icon: <Crown className="size-3.5" /> },
+  { text: "Daftar semua pelanggan", icon: <Users className="size-3.5" /> },
+  { text: "Siapa yang suka oat milk?", icon: <Search className="size-3.5" /> },
+  { text: "Pelanggan yang suka caramel", icon: <Heart className="size-3.5" /> },
+
+  // Minuman & Menu
+  { text: "Minuman paling populer", icon: <CupSoda className="size-3.5" /> },
+  { text: "Ranking menu terlaris", icon: <CupSoda className="size-3.5" /> },
+  { text: "Minuman apa yang paling banyak diminta?", icon: <CupSoda className="size-3.5" /> },
+
+  // Segmen & Analisis
+  { text: "Analisis segmen sweet drinks", icon: <PieChart className="size-3.5" /> },
+  { text: "Analisis pelanggan morning coffee", icon: <PieChart className="size-3.5" /> },
+  { text: "Bandingkan oat milk vs caramel", icon: <GitCompareArrows className="size-3.5" /> },
+  { text: "Bandingkan sweet drinks vs black coffee", icon: <GitCompareArrows className="size-3.5" /> },
+  { text: "Segmen mana yang paling besar?", icon: <PieChart className="size-3.5" /> },
+
+  // Promo & Kampanye
+  { text: "Buat promo untuk weekend", icon: <CalendarDays className="size-3.5" /> },
+  { text: "Buat ide promo untuk pelanggan baru", icon: <Sparkles className="size-3.5" /> },
+  { text: "Segmen belum pernah dipromo", icon: <Target className="size-3.5" /> },
+  { text: "Riwayat promo yang sudah dibuat", icon: <History className="size-3.5" /> },
+  { text: "Saran kampanye untuk bulan depan", icon: <Lightbulb className="size-3.5" /> },
+
+  // Strategi Bisnis
+  { text: "Tag minat yang paling populer", icon: <Tag className="size-3.5" /> },
+  { text: "Ide menu baru berdasarkan tren", icon: <Lightbulb className="size-3.5" /> },
+  { text: "Pelanggan cold drinks ada berapa?", icon: <Search className="size-3.5" /> },
+];
+
+// Shuffle & pick N suggestions (Fisher-Yates)
+function pickRandom<T>(arr: T[], n: number): T[] {
+  const shuffled = [...arr];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled.slice(0, n);
+}
+
+function useRandomSuggestions(excluded: string[], count = 5) {
+  const [picks, setPicks] = useState<typeof ALL_SUGGESTIONS>([]);
+
+  useEffect(() => {
+    const available = ALL_SUGGESTIONS.filter((s) => !excluded.includes(s.text));
+    setPicks(pickRandom(available, count));
+  }, [excluded.length, count]); // re-shuffle when user asks something new
+
+  return picks;
+}
 
 const GREETING: ChatMsg = {
   id: "ai-greeting",
@@ -90,6 +383,145 @@ function KopiAIAvatar() {
   );
 }
 
+// ─── Thinking Steps — contextual fake reasoning ───
+interface ThinkingStep {
+  icon: LucideIcon;
+  label: string;
+  delay: number; // ms before this step appears
+}
+
+function getThinkingSteps(query: string): ThinkingStep[] {
+  const q = query.toLowerCase();
+
+  // Promo-related
+  if (q.includes("promo") || q.includes("diskon") || q.includes("penawaran") || q.includes("campaign")) {
+    return [
+      { icon: Database, label: "Membaca data pelanggan...", delay: 0 },
+      { icon: Tag, label: "Menganalisis segmen target...", delay: 400 },
+      { icon: Lightbulb, label: "Menyusun ide promo...", delay: 900 },
+    ];
+  }
+
+  // Segment/customer analysis
+  if (q.includes("segmen") || q.includes("analisis") || q.includes("lovers") || q.includes("pelanggan")) {
+    return [
+      { icon: Database, label: "Membaca data pelanggan...", delay: 0 },
+      { icon: Search, label: "Mencari pelanggan yang cocok...", delay: 400 },
+      { icon: Users, label: "Mengelompokkan berdasarkan preferensi...", delay: 900 },
+    ];
+  }
+
+  // Trend/statistics
+  if (q.includes("tren") || q.includes("trend") || q.includes("statistik") || q.includes("top") || q.includes("populer")) {
+    return [
+      { icon: Database, label: "Mengambil data terbaru...", delay: 0 },
+      { icon: BarChart3, label: "Menghitung statistik...", delay: 400 },
+      { icon: TrendingUp, label: "Menganalisis tren...", delay: 900 },
+    ];
+  }
+
+  // New customers
+  if (q.includes("baru") || q.includes("new") || q.includes("bergabung")) {
+    return [
+      { icon: Database, label: "Membaca data pelanggan...", delay: 0 },
+      { icon: UserPlus, label: "Mengidentifikasi pelanggan baru...", delay: 400 },
+      { icon: PenLine, label: "Menyusun daftar...", delay: 900 },
+    ];
+  }
+
+  // WhatsApp message
+  if (q.includes("whatsapp") || q.includes("wa") || q.includes("pesan")) {
+    return [
+      { icon: Users, label: "Memilih pelanggan target...", delay: 0 },
+      { icon: Lightbulb, label: "Menyusun strategi pesan...", delay: 400 },
+      { icon: MessageSquare, label: "Menulis pesan personal...", delay: 900 },
+    ];
+  }
+
+  // Default — generic
+  return [
+    { icon: Database, label: "Membaca data pelanggan...", delay: 0 },
+    { icon: Search, label: "Menganalisis pertanyaan...", delay: 400 },
+    { icon: PenLine, label: "Menyusun jawaban...", delay: 900 },
+  ];
+}
+
+// ─── Thinking Indicator (Chain of Thought) ───
+function ThinkingIndicator({ query, toolEvents }: { query: string; toolEvents: ToolEvent[] }) {
+  const steps = getThinkingSteps(query);
+  const [visibleCount, setVisibleCount] = useState(1);
+
+  useEffect(() => {
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    for (let i = 1; i < steps.length; i++) {
+      timers.push(
+        setTimeout(() => setVisibleCount(i + 1), steps[i].delay),
+      );
+    }
+    return () => timers.forEach(clearTimeout);
+  }, [steps]);
+
+  // Merge fake steps + real tool events
+  const hasTools = toolEvents.length > 0;
+
+  return (
+    <div className="flex items-start gap-2.5 sm:gap-3">
+      <KopiAIAvatar />
+      <div className="flex-1 min-w-0">
+        <span className="text-foreground font-display text-[0.78rem] font-semibold mb-1.5 block">
+          Kopi AI
+        </span>
+        <div className="px-4 py-3 rounded-2xl rounded-tl-md bg-card border border-border/30">
+          <ChainOfThought defaultOpen>
+            <ChainOfThoughtHeader>
+              {hasTools ? "Menjalankan aksi..." : "Sedang berpikir..."}
+            </ChainOfThoughtHeader>
+            <ChainOfThoughtContent>
+              {/* Show fake steps first (before any tool events arrive) */}
+              {!hasTools && steps.slice(0, visibleCount).map((step, i) => (
+                <ChainOfThoughtStep
+                  key={step.label}
+                  icon={step.icon}
+                  label={step.label}
+                  status={i < visibleCount - 1 ? "complete" : "active"}
+                />
+              ))}
+              {/* Show real tool events when they arrive */}
+              {hasTools && (
+                <>
+                  <ChainOfThoughtStep
+                    icon={Database}
+                    label="Membaca data pelanggan..."
+                    status="complete"
+                  />
+                  {toolEvents.map((te) => {
+                    const display = TOOL_DISPLAY[te.name] ?? { icon: Wrench, label: te.name };
+                    return (
+                      <ChainOfThoughtStep
+                        key={te.name}
+                        icon={display.icon}
+                        label={display.label}
+                        status={te.status === "done" ? "complete" : "active"}
+                      />
+                    );
+                  })}
+                  {toolEvents.every((te) => te.status === "done") && (
+                    <ChainOfThoughtStep
+                      icon={PenLine}
+                      label="Menyusun jawaban..."
+                      status="active"
+                    />
+                  )}
+                </>
+              )}
+            </ChainOfThoughtContent>
+          </ChainOfThought>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Component ───
 interface ChatContentProps {
   conversationId?: string | null;
@@ -101,28 +533,14 @@ export function ChatContent({ conversationId, onConversationCreated }: ChatConte
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [activeTools, setActiveTools] = useState<ToolEvent[]>([]);
+  const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_MODEL.id);
   const abortRef = useRef<AbortController | null>(null);
   const convoIdRef = useRef<string | null>(conversationId ?? null);
-  // Track IDs created in this session so we skip refetching them
-  const createdInSession = useRef<Set<string>>(new Set());
 
-  // Update ref when prop changes
+  // Load messages on mount (component is fully remounted via key when switching)
   useEffect(() => {
-    convoIdRef.current = conversationId ?? null;
-  }, [conversationId]);
-
-  // Load messages when conversationId changes
-  useEffect(() => {
-    if (!conversationId) {
-      // New chat — reset to greeting
-      setMessages([GREETING]);
-      return;
-    }
-
-    // Skip reload if this conversation was just created by our own chat
-    if (createdInSession.current.has(conversationId)) {
-      return;
-    }
+    if (!conversationId) return; // new chat — keep greeting
 
     let cancelled = false;
     setIsLoading(true);
@@ -154,6 +572,13 @@ export function ChatContent({ conversationId, onConversationCreated }: ChatConte
       cancelled = true;
     };
   }, [conversationId]);
+
+  // Abort any in-flight AI request when unmounting (chat switch / new chat)
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -187,6 +612,7 @@ export function ChatContent({ conversationId, onConversationCreated }: ChatConte
           body: JSON.stringify({
             messages: historyForApi,
             conversationId: convoIdRef.current,
+            model: selectedModel,
           }),
           signal: abortRef.current.signal,
         });
@@ -220,10 +646,21 @@ export function ChatContent({ conversationId, onConversationCreated }: ChatConte
               const data = JSON.parse(payload);
               if (data.error) throw new Error(data.error);
               if (data.conversationId) {
-                // New conversation was created — notify parent
+                // New conversation was created — notify parent (updates URL)
                 convoIdRef.current = data.conversationId;
-                createdInSession.current.add(data.conversationId);
                 onConversationCreated?.(data.conversationId);
+              }
+              // Tool execution events → update CoT steps
+              if (data.tool) {
+                setActiveTools((prev) => {
+                  const existing = prev.findIndex((t) => t.name === data.tool.name);
+                  if (existing >= 0) {
+                    const updated = [...prev];
+                    updated[existing] = data.tool;
+                    return updated;
+                  }
+                  return [...prev, data.tool];
+                });
               }
               if (data.content) {
                 if (!aiMsgAdded) {
@@ -280,10 +717,11 @@ export function ChatContent({ conversationId, onConversationCreated }: ChatConte
         });
       } finally {
         setIsTyping(false);
+        setActiveTools([]);
         abortRef.current = null;
       }
     },
-    [isTyping, messages, onConversationCreated],
+    [isTyping, messages, onConversationCreated, selectedModel],
   );
 
   const handleSubmit = useCallback(
@@ -305,9 +743,7 @@ export function ChatContent({ conversationId, onConversationCreated }: ChatConte
   const askedTexts = messages
     .filter((m) => m.role === "user")
     .map((m) => m.text);
-  const availablePrompts = suggestedPrompts.filter(
-    (p) => !askedTexts.includes(p.text),
-  );
+  const availablePrompts = useRandomSuggestions(askedTexts, 5);
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
@@ -363,7 +799,7 @@ export function ChatContent({ conversationId, onConversationCreated }: ChatConte
                               <span className="text-sm">{msg.text}</span>
                             </div>
                           ) : (
-                            <MessageResponse>{msg.text}</MessageResponse>
+                            <MessageResponse className="prose prose-sm prose-kopi max-w-none">{msg.text}</MessageResponse>
                           )}
                         </MessageContent>
                         {msg.text && !msg.error && (
@@ -375,35 +811,29 @@ export function ChatContent({ conversationId, onConversationCreated }: ChatConte
                     </div>
                   </div>
                 ) : (
-                  <Message from="user" className="max-w-[85%] sm:max-w-[75%]">
-                    <MessageContent>
-                      <span className="text-sm leading-relaxed">{msg.text}</span>
-                    </MessageContent>
-                  </Message>
+                  <div className="flex items-start gap-2.5 sm:gap-3 max-w-[85%] sm:max-w-[75%] ml-auto flex-row-reverse">
+                    <img
+                      src="/kopikita.webp"
+                      alt="You"
+                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover shrink-0 ring-2 ring-[#D4A574]/20"
+                    />
+                    <Message from="user">
+                      <MessageContent>
+                        <span className="text-sm leading-relaxed">{msg.text}</span>
+                      </MessageContent>
+                    </Message>
+                  </div>
                 )}
               </div>
             ))
           )}
 
-          {/* Typing Indicator — shows while waiting for first token */}
+          {/* Thinking Indicator — Chain of Thought while waiting for first token */}
           {isTyping && messages[messages.length - 1]?.role !== "assistant" && (
-            <div className="flex items-start gap-2.5 sm:gap-3">
-              <KopiAIAvatar />
-              <div className="flex-1 min-w-0">
-                <span className="text-foreground font-display text-[0.78rem] font-semibold mb-1.5 block">
-                  Kopi AI
-                </span>
-                <div className="px-4 py-3 rounded-2xl rounded-tl-md bg-card border border-border/30">
-                  <Shimmer
-                    className="text-sm text-[#D4A574]"
-                    duration={1.5}
-                    as="span"
-                  >
-                    Sedang menganalisis data pelanggan...
-                  </Shimmer>
-                </div>
-              </div>
-            </div>
+            <ThinkingIndicator
+              query={messages.filter((m) => m.role === "user").at(-1)?.text ?? ""}
+              toolEvents={activeTools}
+            />
           )}
         </ConversationContent>
         <ConversationScrollButton
@@ -447,7 +877,15 @@ export function ChatContent({ conversationId, onConversationCreated }: ChatConte
             />
           </PromptInputBody>
           <PromptInputFooter>
-            <PromptInputTools />
+            <PromptInputTools>
+              <ToolPicker onSelect={sendMessage} disabled={isTyping} />
+              <ModelSelector
+                models={AVAILABLE_MODELS as unknown as AIModel[]}
+                selectedModelId={selectedModel}
+                onModelChange={setSelectedModel}
+                disabled={isTyping}
+              />
+            </PromptInputTools>
             <PromptInputSubmit
               disabled={!input.trim() || isTyping}
               className="bg-gradient-to-br from-[#D4A574] to-[#A67C52] text-white hover:shadow-md hover:shadow-[#D4A574]/20 border-0"
