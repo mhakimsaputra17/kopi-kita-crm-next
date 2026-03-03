@@ -1,33 +1,88 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ☕ Kopi Kita
 
-## Getting Started
+AI-powered CRM untuk kedai kopi. Kelola pelanggan, analisis segmen, dan buat kampanye promo yang ditargetkan — semua dibantu AI.
 
-First, run the development server:
+## Tech Stack
+
+- **Next.js 16** (App Router) + React 19 + TypeScript
+- **Tailwind CSS 4** + shadcn/ui
+- **Prisma 7** + PostgreSQL (Neon)
+- **Better Auth** (email/password)
+- **Vercel AI SDK** — multi-model (GitHub Models, Google Gemini, Groq)
+- **Upstash Redis** — rate limiting & caching
+
+## Fitur Utama
+
+- **Dashboard** — KPI, grafik minat pelanggan, insight AI
+- **Manajemen Pelanggan** — cari, filter, dan kelola data pelanggan
+- **AI Promo Generator** — buat kampanye promo bertarget dengan AI (structured output + Zod validation)
+- **Chat Assistant** — asisten AI interaktif untuk analisis bisnis (statistik, segmentasi, tren pertumbuhan)
+- **Multi-LLM Fallback** — Google Gemini → Groq → GitHub Models untuk keandalan
+
+## Setup
+
+### 1. Install dependencies
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
+bun install
+```
+
+### 2. Konfigurasi environment
+
+Salin `.env.example` ke `.env` dan isi variabel berikut:
+
+```env
+DATABASE_URL="postgresql://..."
+BETTER_AUTH_SECRET="..."
+BETTER_AUTH_URL="http://localhost:3000"
+GITHUB_TOKEN="ghp_..."
+GEMINI_API_KEY="AIza..."
+UPSTASH_REDIS_REST_URL="https://..."
+UPSTASH_REDIS_REST_TOKEN="..."
+```
+
+### 3. Setup database
+
+```bash
+bun run db:generate
+bun run db:push
+bun run db:seed
+```
+
+### 4. Jalankan
+
+```bash
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Buka [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Script | Keterangan |
+|---|---|
+| `bun dev` | Development server |
+| `bun run build` | Build production |
+| `bun run db:generate` | Generate Prisma client |
+| `bun run db:push` | Push schema ke database |
+| `bun run db:seed` | Seed data awal |
+| `bun run db:studio` | Buka Prisma Studio |
 
-## Learn More
+## Struktur Projek
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+src/
+├── app/              # Routes (App Router)
+│   ├── (auth)/       # Login
+│   ├── (dashboard)/  # Dashboard, customers, promo, chat
+│   └── api/          # API endpoints
+├── actions/          # Server actions
+├── components/       # React components (UI, chat, dashboard)
+├── lib/              # Utilities (AI, auth, DB, redis)
+├── schemas/          # Zod validation schemas
+├── hooks/            # React hooks
+└── types/            # TypeScript types
+```
 
 ## Deploy on Vercel
 
