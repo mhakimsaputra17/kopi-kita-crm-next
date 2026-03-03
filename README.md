@@ -518,14 +518,19 @@ Edit `.env` dan isi semua variabel:
 
 ```env
 # Database — dari Neon dashboard (neon.tech)
-DATABASE_URL="postgresql://user:password@ep-xxx.region.aws.neon.tech/neondb?sslmode=require"
+DATABASE_URL="postgresql://user:password@ep-xxx.region.aws.neon.tech/neondb?sslmode=verify-full&channel_binding=require"
 
 # Auth secret — generate: openssl rand -base64 32
 BETTER_AUTH_SECRET="your-secret-min-32-chars"
 BETTER_AUTH_URL="http://localhost:3000"
 
-# AI — GitHub Models token (github.com/settings/tokens)
-GITHUB_TOKEN="ghp_xxxxxxxxxxxx"
+# AI — GitHub Models tokens (multiple = more rate limit capacity)
+GITHUB_TOKEN="your-github-token-here"
+GITHUB_TOKEN_2="your-github-token-2-here"
+GITHUB_TOKEN_3="your-github-token-3-here"
+
+# AI — Google Gemini
+GEMINI_API_KEY="your-gemini-api-key-here"
 
 # Redis — dari Upstash console (console.upstash.com)
 UPSTASH_REDIS_REST_URL="https://your-redis.upstash.io"
@@ -533,6 +538,11 @@ UPSTASH_REDIS_REST_TOKEN="your-upstash-token-here"
 
 # App URL
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
+
+# Seed User (dipakai oleh: bun run db:seed)
+SEED_USER_NAME="Mimi"
+SEED_USER_EMAIL="mimi@kopikita.com"
+SEED_USER_PASSWORD="your-seed-password-here"
 ```
 
 #### Cara Mendapatkan Credentials
@@ -541,7 +551,8 @@ NEXT_PUBLIC_APP_URL="http://localhost:3000"
 |---------|-----------------|-----|
 | **Neon Postgres** | Daftar → Create project → Copy connection string | [neon.tech](https://neon.tech) |
 | **Upstash Redis** | Daftar → Create database → Copy REST URL & token | [console.upstash.com](https://console.upstash.com) |
-| **GitHub Token** | Settings → Developer Settings → Personal Access Tokens → Generate (centang `models:read`) | [github.com/settings/tokens](https://github.com/settings/tokens) |
+| **GitHub Token** | Settings → Developer Settings → Personal Access Tokens → Generate (centang `models:read`). Buat 3 token untuk load balancing | [github.com/settings/tokens](https://github.com/settings/tokens) |
+| **Google Gemini** | Daftar → Create API key | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
 | **Auth Secret** | Jalankan: `openssl rand -base64 32` | Terminal lokal |
 
 ### 3. Setup Database
@@ -740,9 +751,15 @@ DATABASE_URL="postgresql://..."
 BETTER_AUTH_SECRET="..."
 BETTER_AUTH_URL="https://your-domain.vercel.app"
 GITHUB_TOKEN="ghp_..."
+GITHUB_TOKEN_2="ghp_..."
+GITHUB_TOKEN_3="ghp_..."
+GEMINI_API_KEY="AIza..."
 UPSTASH_REDIS_REST_URL="https://..."
 UPSTASH_REDIS_REST_TOKEN="..."
 NEXT_PUBLIC_APP_URL="https://your-domain.vercel.app"
+SEED_USER_NAME="Mimi"
+SEED_USER_EMAIL="mimi@kopikita.com"
+SEED_USER_PASSWORD="..."
 ```
 
 > **Penting**: Ubah `BETTER_AUTH_URL` dan `NEXT_PUBLIC_APP_URL` ke domain production.
