@@ -30,17 +30,17 @@ export function KPICards({ totalCustomers, totalTags, activeCampaigns }: KPICard
       label: "Kampanye Aktif",
       value: String(activeCampaigns),
       icon: Megaphone,
-      tint: "bg-[#D4A574]/6",
-      iconBg: "bg-[#3C2415]/8 dark:bg-[#D4A574]/12",
-      iconColor: "text-[#3C2415] dark:text-[#D4A574]",
+      tint: "bg-[#C27A8A]/8",
+      iconBg: "bg-[#C27A8A]/15",
+      iconColor: "text-[#C27A8A] dark:text-[#C27A8A]",
     },
     {
       label: "Pesan Terkirim",
       value: "—",
       icon: Send,
-      tint: "bg-[#FFF8F0] dark:bg-[#D4A574]/5",
-      iconBg: "bg-[#D4A574]/12",
-      iconColor: "text-[#A67C52] dark:text-[#D4A574]",
+      tint: "bg-[#6B9AC4]/8",
+      iconBg: "bg-[#6B9AC4]/15",
+      iconColor: "text-[#6B9AC4] dark:text-[#6B9AC4]",
     },
   ];
 

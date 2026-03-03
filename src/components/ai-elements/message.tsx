@@ -56,8 +56,8 @@ export const MessageContent = ({
   <div
     className={cn(
       "is-user:dark flex w-fit min-w-0 max-w-full flex-col gap-2 overflow-hidden text-sm",
-      "group-[.is-user]:ml-auto group-[.is-user]:rounded-2xl group-[.is-user]:rounded-tr-md group-[.is-user]:px-4 group-[.is-user]:py-3 group-[.is-user]:text-white group-[.is-user]:bg-gradient-to-br group-[.is-user]:from-[#3C2415] group-[.is-user]:to-[#5C3D2E]",
-      "group-[.is-assistant]:rounded-2xl group-[.is-assistant]:rounded-tl-md group-[.is-assistant]:bg-card group-[.is-assistant]:border group-[.is-assistant]:border-border/30 group-[.is-assistant]:px-4 group-[.is-assistant]:py-3 group-[.is-assistant]:text-foreground/85",
+      "group-[.is-user]:ml-auto group-[.is-user]:rounded-2xl group-[.is-user]:rounded-tr-md group-[.is-user]:px-4 group-[.is-user]:py-3 group-[.is-user]:text-white group-[.is-user]:bg-gradient-to-br group-[.is-user]:from-[#3C2415] group-[.is-user]:to-[#5C3D2E] group-[.is-user]:dark:from-[#D4A574] group-[.is-user]:dark:to-[#A67C52] group-[.is-user]:dark:text-[#1A1210]",
+      "group-[.is-assistant]:rounded-2xl group-[.is-assistant]:rounded-tl-md group-[.is-assistant]:bg-card group-[.is-assistant]:border group-[.is-assistant]:border-border/30 group-[.is-assistant]:px-4 group-[.is-assistant]:py-3 group-[.is-assistant]:text-foreground",
       className
     )}
     {...props}

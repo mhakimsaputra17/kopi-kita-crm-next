@@ -81,7 +81,7 @@ export function ChatSidebar({
             key={c.id}
             className={`group flex items-center gap-1.5 px-2 py-1.5 rounded-lg cursor-pointer transition-colors text-sm ${
               c.id === activeId
-                ? "bg-[#D4A574]/10 text-[#3C2415] border border-[#D4A574]/20"
+                ? "bg-[#D4A574]/10 text-[#3C2415] dark:text-foreground border border-[#D4A574]/20"
                 : "hover:bg-muted/50 text-foreground/80"
             }`}
             onClick={() => c.id !== editingId && onSelect(c.id)}

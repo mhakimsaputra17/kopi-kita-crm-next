@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { signIn } from "@/lib/auth-client";
 import { z } from "zod";
 import {
@@ -11,6 +13,13 @@ import {
   EyeOff,
   ArrowRight,
 } from "lucide-react";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormMessage,
+} from "@/components/ui/form";
 
 const loginSchema = z.object({
   email: z
@@ -23,38 +32,26 @@ const loginSchema = z.object({
     .min(6, "Password minimal 6 karakter"),
 });
 
-type FieldErrors = Partial<Record<"email" | "password", string>>;
+type LoginValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [apiError, setApiError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFieldErrors({});
+  const form = useForm<LoginValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: "", password: "" },
+  });
+
+  const onSubmit = async (data: LoginValues) => {
     setApiError("");
-
-    const parsed = loginSchema.safeParse({ email, password });
-    if (!parsed.success) {
-      const errors: FieldErrors = {};
-      for (const issue of parsed.error.issues) {
-        const field = issue.path[0] as "email" | "password";
-        if (!errors[field]) errors[field] = issue.message;
-      }
-      setFieldErrors(errors);
-      return;
-    }
-
     setIsLoading(true);
 
     const result = await signIn.email({
-      email: parsed.data.email,
-      password: parsed.data.password,
+      email: data.email,
+      password: data.password,
     });
 
     if (result.error) {
@@ -65,9 +62,6 @@ export default function LoginPage() {
       router.refresh();
     }
   };
-
-  const hasError = (field: "email" | "password") => !!fieldErrors[field];
-  const hasAnyError = Object.keys(fieldErrors).length > 0 || apiError !== "";
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
@@ -132,105 +126,117 @@ export default function LoginPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Email */}
-            <div>
-              <label className="block text-[#3C2415]/70 dark:text-[#F5EDE4]/60 text-[0.75rem] font-medium mb-1.5">
-                Email
-              </label>
-              <div className="relative">
-                <Mail
-                  className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 ${
-                    hasError("email")
-                      ? "text-[#D4183D]/40"
-                      : "text-[#3C2415]/25 dark:text-[#F5EDE4]/25"
-                  }`}
-                />
-                <input
-                  type="email"
-                  placeholder="Email anda"
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    if (fieldErrors.email) setFieldErrors((p) => ({ ...p, email: undefined }));
-                    if (apiError) setApiError("");
-                  }}
-                  className={`w-full pl-10 pr-4 py-3 rounded-xl bg-[#FFF8F0]/60 dark:bg-[#241C17] text-[#3C2415] dark:text-[#F5EDE4] placeholder:text-[#3C2415]/30 dark:placeholder:text-[#F5EDE4]/25 transition-all duration-200 outline-none border text-[0.85rem] ${
-                    hasError("email")
-                      ? "border-[#D4183D]/30 bg-[#D4183D]/[0.03] focus:border-[#D4183D]/50 focus:ring-2 focus:ring-[#D4183D]/10"
-                      : "border-[#3C2415]/10 dark:border-[#F5EDE4]/10 focus:border-[#D4A574]/50 focus:ring-2 focus:ring-[#D4A574]/15"
-                  }`}
-                />
-              </div>
-              {fieldErrors.email && (
-                <p className="mt-1.5 text-[#D4183D] text-[0.72rem]">{fieldErrors.email}</p>
-              )}
-            </div>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="space-y-4">
+              {/* Email */}
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field, fieldState }) => (
+                  <FormItem>
+                    <label className="block text-[#3C2415]/70 dark:text-[#F5EDE4]/60 text-[0.75rem] font-medium mb-1.5">
+                      Email
+                    </label>
+                    <FormControl>
+                      <div className="relative">
+                        <Mail
+                          className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 ${
+                            fieldState.error
+                              ? "text-[#D4183D]/40"
+                              : "text-[#3C2415]/25 dark:text-[#F5EDE4]/25"
+                          }`}
+                        />
+                        <input
+                          type="email"
+                          placeholder="Email anda"
+                          {...field}
+                          onChange={(e) => {
+                            field.onChange(e);
+                            if (apiError) setApiError("");
+                          }}
+                          className={`w-full pl-10 pr-4 py-3 rounded-xl bg-[#FFF8F0]/60 dark:bg-[#241C17] text-[#3C2415] dark:text-[#F5EDE4] placeholder:text-[#3C2415]/30 dark:placeholder:text-[#F5EDE4]/25 transition-all duration-200 outline-none border text-[0.85rem] ${
+                            fieldState.error
+                              ? "border-[#D4183D]/30 bg-[#D4183D]/[0.03] focus:border-[#D4183D]/50 focus:ring-2 focus:ring-[#D4183D]/10"
+                              : "border-[#3C2415]/10 dark:border-[#F5EDE4]/10 focus:border-[#D4A574]/50 focus:ring-2 focus:ring-[#D4A574]/15"
+                          }`}
+                        />
+                      </div>
+                    </FormControl>
+                    <FormMessage className="text-[#D4183D] text-[0.72rem]" />
+                  </FormItem>
+                )}
+              />
 
-            {/* Password */}
-            <div>
-              <label className="block text-[#3C2415]/70 dark:text-[#F5EDE4]/60 text-[0.75rem] font-medium mb-1.5">
-                Password
-              </label>
-              <div className="relative">
-                <Lock
-                  className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 ${
-                    hasError("password")
-                      ? "text-[#D4183D]/40"
-                      : "text-[#3C2415]/25 dark:text-[#F5EDE4]/25"
-                  }`}
-                />
-                <input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Password"
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    if (fieldErrors.password) setFieldErrors((p) => ({ ...p, password: undefined }));
-                    if (apiError) setApiError("");
-                  }}
-                  className={`w-full pl-10 pr-11 py-3 rounded-xl bg-[#FFF8F0]/60 dark:bg-[#241C17] text-[#3C2415] dark:text-[#F5EDE4] placeholder:text-[#3C2415]/30 dark:placeholder:text-[#F5EDE4]/25 transition-all duration-200 outline-none border text-[0.85rem] ${
-                    hasError("password")
-                      ? "border-[#D4183D]/30 bg-[#D4183D]/[0.03] focus:border-[#D4183D]/50 focus:ring-2 focus:ring-[#D4183D]/10"
-                      : "border-[#3C2415]/10 dark:border-[#F5EDE4]/10 focus:border-[#D4A574]/50 focus:ring-2 focus:ring-[#D4A574]/15"
-                  }`}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#3C2415]/30 dark:text-[#F5EDE4]/30 hover:text-[#3C2415]/50 dark:hover:text-[#F5EDE4]/50 transition-colors cursor-pointer"
-                >
-                  {showPassword ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
-                </button>
-              </div>
-              {fieldErrors.password && (
-                <p className="mt-1.5 text-[#D4183D] text-[0.72rem]">{fieldErrors.password}</p>
-              )}
-            </div>
+              {/* Password */}
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field, fieldState }) => (
+                  <FormItem>
+                    <label className="block text-[#3C2415]/70 dark:text-[#F5EDE4]/60 text-[0.75rem] font-medium mb-1.5">
+                      Password
+                    </label>
+                    <FormControl>
+                      <div className="relative">
+                        <Lock
+                          className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 ${
+                            fieldState.error
+                              ? "text-[#D4183D]/40"
+                              : "text-[#3C2415]/25 dark:text-[#F5EDE4]/25"
+                          }`}
+                        />
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          placeholder="Password"
+                          {...field}
+                          onChange={(e) => {
+                            field.onChange(e);
+                            if (apiError) setApiError("");
+                          }}
+                          className={`w-full pl-10 pr-11 py-3 rounded-xl bg-[#FFF8F0]/60 dark:bg-[#241C17] text-[#3C2415] dark:text-[#F5EDE4] placeholder:text-[#3C2415]/30 dark:placeholder:text-[#F5EDE4]/25 transition-all duration-200 outline-none border text-[0.85rem] ${
+                            fieldState.error
+                              ? "border-[#D4183D]/30 bg-[#D4183D]/[0.03] focus:border-[#D4183D]/50 focus:ring-2 focus:ring-[#D4183D]/10"
+                              : "border-[#3C2415]/10 dark:border-[#F5EDE4]/10 focus:border-[#D4A574]/50 focus:ring-2 focus:ring-[#D4A574]/15"
+                          }`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#3C2415]/30 dark:text-[#F5EDE4]/30 hover:text-[#3C2415]/50 dark:hover:text-[#F5EDE4]/50 transition-colors cursor-pointer"
+                        >
+                          {showPassword ? (
+                            <EyeOff className="w-4 h-4" />
+                          ) : (
+                            <Eye className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
+                    </FormControl>
+                    <FormMessage className="text-[#D4183D] text-[0.72rem]" />
+                  </FormItem>
+                )}
+              />
 
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full mt-2 py-3 rounded-xl bg-[#3C2415] text-[#FFF8F0] flex items-center justify-center gap-2 transition-all duration-200 hover:bg-[#4D3525] active:scale-[0.99] cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed text-[0.85rem] font-medium"
-            >
-              {isLoading ? (
-                <div
-                  className="border-2 border-[#FFF8F0]/30 border-t-[#FFF8F0] rounded-full animate-spin"
-                  style={{ width: 18, height: 18 }}
-                />
-              ) : (
-                <>
-                  Masuk
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
-          </form>
+              {/* Submit */}
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full mt-2 py-3 rounded-xl bg-[#3C2415] text-[#FFF8F0] flex items-center justify-center gap-2 transition-all duration-200 hover:bg-[#4D3525] active:scale-[0.99] cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed text-[0.85rem] font-medium"
+              >
+                {isLoading ? (
+                  <div
+                    className="border-2 border-[#FFF8F0]/30 border-t-[#FFF8F0] rounded-full animate-spin"
+                    style={{ width: 18, height: 18 }}
+                  />
+                ) : (
+                  <>
+                    Masuk
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </form>
+          </Form>
 
           <div className="mt-5 text-center">
             <button className="text-[#D4A574] hover:text-[#A67C52] transition-colors cursor-pointer text-[0.8rem]">

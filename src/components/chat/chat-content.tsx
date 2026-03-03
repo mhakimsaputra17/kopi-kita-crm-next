@@ -249,11 +249,11 @@ function ToolPicker({
                     className="flex items-start gap-2.5 py-2"
                   >
                     <div className="mt-0.5 p-1 rounded bg-[#D4A574]/10">
-                      <Icon className="size-3.5 text-[#A67C52]" />
+                      <Icon className="size-3.5 text-[#A67C52] dark:text-[#D4A574]" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium leading-tight">{tool.name}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5 leading-tight">{tool.description}</p>
+                      <p className="text-sm font-medium leading-tight dark:text-[#F5EDE4]">{tool.name}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 leading-tight dark:text-[#BFA898]">{tool.description}</p>
                     </div>
                   </CommandItem>
                 );
@@ -273,11 +273,11 @@ function ToolPicker({
                     className="flex items-start gap-2.5 py-2"
                   >
                     <div className="mt-0.5 p-1 rounded bg-[#D4A574]/10">
-                      <Icon className="size-3.5 text-[#A67C52]" />
+                      <Icon className="size-3.5 text-[#A67C52] dark:text-[#D4A574]" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium leading-tight">{tool.name}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5 leading-tight">{tool.description}</p>
+                      <p className="text-sm font-medium leading-tight dark:text-[#F5EDE4]">{tool.name}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 leading-tight dark:text-[#BFA898]">{tool.description}</p>
                     </div>
                   </CommandItem>
                 );
@@ -468,10 +468,10 @@ function ThinkingIndicator({ query, toolEvents }: { query: string; toolEvents: T
     <div className="flex items-start gap-2.5 sm:gap-3">
       <KopiAIAvatar />
       <div className="flex-1 min-w-0">
-        <span className="text-foreground font-display text-[0.78rem] font-semibold mb-1.5 block">
+        <span className="text-foreground dark:text-[#F5EDE4] font-display text-[0.78rem] font-semibold mb-1.5 block">
           Kopi AI
         </span>
-        <div className="px-4 py-3 rounded-2xl rounded-tl-md bg-card border border-border/30">
+        <div className="px-4 py-3 rounded-2xl rounded-tl-md bg-card border border-border/30 dark:text-[#F5EDE4]">
           <ChainOfThought defaultOpen>
             <ChainOfThoughtHeader>
               {hasTools ? "Menjalankan aksi..." : "Sedang berpikir..."}
@@ -754,7 +754,7 @@ export function ChatContent({ conversationId, onConversationCreated }: ChatConte
             <Database className="w-3 h-3 text-[#8B9D77]" />
             <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-[#8B9D77] rounded-full" />
           </div>
-          <span className="text-[#5E7248] dark:text-[#8B9D77] text-xs font-medium">
+          <span className="text-[#5E7248] dark:text-[#A8B99A] text-xs font-medium">
             Terhubung dengan data 47 pelanggan
           </span>
         </div>
@@ -767,7 +767,7 @@ export function ChatContent({ conversationId, onConversationCreated }: ChatConte
             <div className="flex items-center justify-center py-12">
               <div className="flex items-center gap-3 text-muted-foreground">
                 <div className="size-5 border-2 border-[#D4A574]/30 border-t-[#D4A574] rounded-full animate-spin" />
-                <span className="text-sm">Memuat riwayat chat...</span>
+                <span className="text-sm dark:text-[#BFA898]">Memuat riwayat chat...</span>
               </div>
             </div>
           ) : messages.length === 0 ? (
@@ -779,7 +779,7 @@ export function ChatContent({ conversationId, onConversationCreated }: ChatConte
               }
               title="Halo Mimi!"
               description="Tanyakan apa saja tentang data pelanggan atau minta saya buatkan ide promo."
-              className="[&_h3]:font-display [&_h3]:text-lg [&_h3]:text-foreground [&_p]:text-muted-foreground"
+              className="[&_h3]:font-display [&_h3]:text-lg [&_h3]:text-foreground dark:[&_h3]:text-[#F5EDE4] [&_p]:text-muted-foreground dark:[&_p]:text-[#BFA898]"
             />
           ) : (
             messages.map((msg) => (
@@ -788,7 +788,7 @@ export function ChatContent({ conversationId, onConversationCreated }: ChatConte
                   <div className="flex items-start gap-2.5 sm:gap-3 max-w-full sm:max-w-[85%]">
                     <KopiAIAvatar />
                     <div className="flex-1 min-w-0">
-                      <span className="text-foreground font-display text-[0.78rem] font-semibold mb-1.5 block">
+                      <span className="text-foreground dark:text-[#F5EDE4] font-display text-[0.78rem] font-semibold mb-1.5 block">
                         Kopi AI
                       </span>
                       <Message from="assistant">
@@ -799,7 +799,7 @@ export function ChatContent({ conversationId, onConversationCreated }: ChatConte
                               <span className="text-sm">{msg.text}</span>
                             </div>
                           ) : (
-                            <MessageResponse className="prose prose-sm prose-kopi max-w-none">{msg.text}</MessageResponse>
+                            <MessageResponse className="prose prose-sm prose-kopi max-w-none dark:text-[#F5EDE4] dark:[&_strong]:text-[#F5EDE4] dark:[&_h1]:text-[#F5EDE4] dark:[&_h2]:text-[#F5EDE4] dark:[&_h3]:text-[#F5EDE4] dark:[&_h4]:text-[#F5EDE4] dark:[&_p]:text-[#F5EDE4] dark:[&_li]:text-[#F5EDE4] dark:[&_blockquote]:text-[#E8C9A8] dark:[&_code]:text-[#E8C9A8] dark:[&_a]:text-[#D4A574]">{msg.text}</MessageResponse>
                           )}
                         </MessageContent>
                         {msg.text && !msg.error && (

@@ -241,7 +241,7 @@ export function CustomerTable() {
                   </span>
                   <button
                     onClick={() => setSelectedTags([])}
-                    className="text-[#D4A574] hover:text-[#A67C52] transition-colors cursor-pointer"
+                    className="text-[#D4A574] hover:text-[#A67C52] dark:hover:text-[#E8C9A8] transition-colors cursor-pointer"
                     style={{
                       fontFamily: "'DM Sans', sans-serif",
                       fontSize: "0.72rem",

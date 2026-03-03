@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { Sun, Moon, Bell, ChevronRight, Menu } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -45,6 +45,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
   const { data: session } = useSession();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
 
   const userName = session?.user?.name || "User";
 
@@ -132,7 +135,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                 className="w-9 h-9 rounded-[10px] flex items-center justify-center hover:bg-secondary transition-colors cursor-pointer"
                 aria-label="Toggle dark mode"
               >
-                {isDark ? (
+                {mounted && isDark ? (
                   <Sun className="w-[18px] h-[18px] text-[#D4A574]" />
                 ) : (
                   <Moon className="w-[18px] h-[18px] text-foreground/50" />
