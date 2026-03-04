@@ -26,6 +26,10 @@ import {
   Crown,
   PieChart,
   Target,
+  Square,
+  RefreshCw,
+  Brain,
+  UserCog,
 } from "lucide-react";
 import {
   Conversation,
@@ -103,6 +107,9 @@ const TOOL_DISPLAY: Record<string, { icon: LucideIcon; label: string }> = {
   compare_segments: { icon: GitCompareArrows, label: "Membandingkan segmen..." },
   get_drink_analysis: { icon: CupSoda, label: "Menganalisis minuman..." },
   suggest_new_promo: { icon: Target, label: "Mencari peluang promo baru..." },
+  semantic_search_customers: { icon: Brain, label: "Pencarian semantik pelanggan..." },
+  create_customer: { icon: UserPlus, label: "Menambahkan pelanggan baru..." },
+  update_customer: { icon: UserCog, label: "Memperbarui data pelanggan..." },
 };
 
 // ─── Tool Catalog for tool picker ───
@@ -173,6 +180,14 @@ const TOOL_CATALOG: ToolCatalogItem[] = [
     prompt: "Tampilkan analisis minuman terlaris",
     group: "data",
   },
+  {
+    id: "semantic_search_customers",
+    icon: Brain,
+    name: "Pencarian Semantik",
+    description: "Cari pelanggan berdasarkan deskripsi natural",
+    prompt: "Cari pelanggan yang suka minuman manis dan dingin",
+    group: "data",
+  },
   // Promo & Kampanye
   {
     id: "generate_promo",
@@ -197,6 +212,23 @@ const TOOL_CATALOG: ToolCatalogItem[] = [
     description: "Cari segmen yang belum pernah dipromo",
     prompt: "Segmen mana yang belum pernah dipromo?",
     group: "promo",
+  },
+  // CRUD
+  {
+    id: "create_customer",
+    icon: UserPlus,
+    name: "Tambah Pelanggan",
+    description: "Tambah pelanggan baru ke database",
+    prompt: "Tambahkan pelanggan baru bernama Andi, minuman favorit Americano, tag: black coffee, regular",
+    group: "data",
+  },
+  {
+    id: "update_customer",
+    icon: UserCog,
+    name: "Update Pelanggan",
+    description: "Update data pelanggan yang sudah ada",
+    prompt: "Update pelanggan Andi, tambahkan tag loyal customer",
+    group: "data",
   },
 ];
 
@@ -374,6 +406,19 @@ function CopyMessageAction({ text }: { text: string }) {
   );
 }
 
+// ─── Retry Action ───
+function RetryMessageAction({ onRetry }: { onRetry: () => void }) {
+  return (
+    <button
+      onClick={onRetry}
+      className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#D4A574]/10 text-[#A67C52] dark:text-[#D4A574] hover:bg-[#D4A574]/20 transition-colors"
+    >
+      <RefreshCw className="size-3" />
+      Coba Lagi
+    </button>
+  );
+}
+
 // ─── AI Avatar ───
 function KopiAIAvatar() {
   return (
@@ -535,8 +580,18 @@ export function ChatContent({ conversationId, onConversationCreated }: ChatConte
   const [isLoading, setIsLoading] = useState(false);
   const [activeTools, setActiveTools] = useState<ToolEvent[]>([]);
   const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_MODEL.id);
+  const [customerCount, setCustomerCount] = useState<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const convoIdRef = useRef<string | null>(conversationId ?? null);
+  const lastUserMsgRef = useRef<string>("");
+
+  // Fetch customer count for status bar
+  useEffect(() => {
+    fetch("/api/customers?page=1&limit=1")
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => { if (data?.total) setCustomerCount(data.total); })
+      .catch(() => {});
+  }, []);
 
   // Load messages on mount (component is fully remounted via key when switching)
   useEffect(() => {
@@ -584,10 +639,13 @@ export function ChatContent({ conversationId, onConversationCreated }: ChatConte
     async (text: string) => {
       if (!text.trim() || isTyping) return;
 
+      const trimmedText = text.trim();
+      lastUserMsgRef.current = trimmedText;
+
       const userMsg: ChatMsg = {
         id: `user-${Date.now()}`,
         role: "user",
-        text: text.trim(),
+        text: trimmedText,
       };
 
       setMessages((prev) => [...prev, userMsg]);
@@ -724,6 +782,25 @@ export function ChatContent({ conversationId, onConversationCreated }: ChatConte
     [isTyping, messages, onConversationCreated, selectedModel],
   );
 
+  // Stop streaming
+  const handleStop = useCallback(() => {
+    abortRef.current?.abort();
+  }, []);
+
+  // Retry last failed message
+  const handleRetry = useCallback(() => {
+    // Remove the last error message, then resend
+    setMessages((prev) => {
+      const lastMsg = prev[prev.length - 1];
+      if (lastMsg?.error) return prev.slice(0, -1);
+      return prev;
+    });
+    if (lastUserMsgRef.current) {
+      // Small delay to let state settle
+      setTimeout(() => sendMessage(lastUserMsgRef.current), 50);
+    }
+  }, [sendMessage]);
+
   const handleSubmit = useCallback(
     (message: PromptInputMessage) => {
       if (message.text.trim()) {
@@ -755,7 +832,9 @@ export function ChatContent({ conversationId, onConversationCreated }: ChatConte
             <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-[#8B9D77] rounded-full" />
           </div>
           <span className="text-[#5E7248] dark:text-[#A8B99A] text-xs font-medium">
-            Terhubung dengan data 47 pelanggan
+            {customerCount !== null
+              ? `Terhubung dengan data ${customerCount} pelanggan`
+              : "Menghubungkan ke database..."}
           </span>
         </div>
       </div>
@@ -794,16 +873,19 @@ export function ChatContent({ conversationId, onConversationCreated }: ChatConte
                       <Message from="assistant">
                         <MessageContent>
                           {msg.error ? (
-                            <div className="flex items-start gap-2 text-destructive">
-                              <AlertCircle className="size-4 mt-0.5 shrink-0" />
-                              <span className="text-sm">{msg.text}</span>
+                            <div>
+                              <div className="flex items-start gap-2 text-destructive">
+                                <AlertCircle className="size-4 mt-0.5 shrink-0" />
+                                <span className="text-sm">{msg.text}</span>
+                              </div>
+                              <RetryMessageAction onRetry={handleRetry} />
                             </div>
                           ) : (
                             <MessageResponse className="prose prose-sm prose-kopi max-w-none dark:text-[#F5EDE4] dark:[&_strong]:text-[#F5EDE4] dark:[&_h1]:text-[#F5EDE4] dark:[&_h2]:text-[#F5EDE4] dark:[&_h3]:text-[#F5EDE4] dark:[&_h4]:text-[#F5EDE4] dark:[&_p]:text-[#F5EDE4] dark:[&_li]:text-[#F5EDE4] dark:[&_blockquote]:text-[#E8C9A8] dark:[&_code]:text-[#E8C9A8] dark:[&_a]:text-[#D4A574]">{msg.text}</MessageResponse>
                           )}
                         </MessageContent>
                         {msg.text && !msg.error && (
-                          <MessageActions className="mt-1 opacity-0 group-hover/msg:opacity-100 transition-opacity duration-200">
+                          <MessageActions className="mt-1 sm:opacity-0 sm:group-hover/msg:opacity-100 transition-opacity duration-200">
                             <CopyMessageAction text={msg.text} />
                           </MessageActions>
                         )}
@@ -886,10 +968,20 @@ export function ChatContent({ conversationId, onConversationCreated }: ChatConte
                 disabled={isTyping}
               />
             </PromptInputTools>
-            <PromptInputSubmit
-              disabled={!input.trim() || isTyping}
-              className="bg-gradient-to-br from-[#D4A574] to-[#A67C52] text-white hover:shadow-md hover:shadow-[#D4A574]/20 border-0"
-            />
+            {isTyping ? (
+              <button
+                onClick={handleStop}
+                className="inline-flex items-center justify-center size-8 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
+                title="Hentikan"
+              >
+                <Square className="size-3.5 fill-current" />
+              </button>
+            ) : (
+              <PromptInputSubmit
+                disabled={!input.trim()}
+                className="bg-gradient-to-br from-[#D4A574] to-[#A67C52] text-white hover:shadow-md hover:shadow-[#D4A574]/20 border-0"
+              />
+            )}
           </PromptInputFooter>
         </PromptInput>
       </div>
