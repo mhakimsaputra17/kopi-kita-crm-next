@@ -1,10 +1,12 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
+  provider   = "postgresql"
+  extensions = [vector]
 }
 
 // ─── Better Auth tables ───
@@ -74,13 +76,14 @@ model Verification {
 // ─── App: Customer ───
 
 model Customer {
-  id           String   @id @default(cuid())
-  name         String
-  contact      String?
-  favoriteDrink String  @map("favorite_drink")
-  interestTags String[] @map("interest_tags")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id            String                   @id @default(cuid())
+  name          String
+  contact       String?
+  favoriteDrink String                   @map("favorite_drink")
+  interestTags  String[]                 @map("interest_tags")
+  embedding     Unsupported("vector(256)")?
+  createdAt     DateTime                 @default(now()) @map("created_at")
+  updatedAt     DateTime                 @updatedAt @map("updated_at")
 
   @@index([name])
   @@index([interestTags], type: Gin)
