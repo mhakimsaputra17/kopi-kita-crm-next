@@ -2,6 +2,9 @@ import "dotenv/config";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
+import { toSql } from "pgvector";
+import OpenAI from "openai";
+import { auth } from "../src/lib/auth";
 
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
@@ -74,28 +77,122 @@ async function seed() {
   await db.verification.deleteMany();
   await db.user.deleteMany();
 
-  // Seed demo user via Better Auth sign-up API
-  const authUrl = process.env.BETTER_AUTH_URL || "http://localhost:3000";
+  // Seed demo user via Better Auth internal API (no server needed)
   try {
-    const res = await fetch(`${authUrl}/api/auth/sign-up/email`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(DEMO_USER),
+    await auth.api.signUpEmail({
+      body: {
+        name: DEMO_USER.name,
+        email: DEMO_USER.email,
+        password: DEMO_USER.password,
+      },
     });
-    if (res.ok) {
-      console.log(`✅ Demo user created: ${DEMO_USER.email} / ${DEMO_USER.password}`);
-    } else {
-      const text = await res.text();
-      console.log(`⚠️  Demo user creation via API failed (${res.status}): ${text}`);
-      console.log("   → User will be created on first sign-up in the app");
-    }
-  } catch {
-    console.log("⚠️  Auth server not running — demo user will be created on first sign-up");
+    console.log(`✅ Demo user created: ${DEMO_USER.email} / ${DEMO_USER.password}`);
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.log(`⚠️  Demo user creation failed: ${msg}`);
   }
 
   // Seed customers
   const result = await db.customer.createMany({ data: CUSTOMERS });
   console.log(`✅ Created ${result.count} customers`);
+
+  // Generate embeddings for all customers
+  const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
+  if (GITHUB_TOKEN || GEMINI_API_KEY) {
+    const provider = GITHUB_TOKEN ? "GitHub Models (text-embedding-3-small)" : "Gemini (text-embedding-004)";
+    console.log(`\n🧠 Generating embeddings via ${provider}...`);
+
+    const customers = await db.customer.findMany({
+      select: { id: true, name: true, favoriteDrink: true, interestTags: true },
+    });
+
+    let success = 0;
+    let failed = 0;
+
+    // GitHub Models client (primary)
+    const ghClient = GITHUB_TOKEN
+      ? new OpenAI({ baseURL: "https://models.github.ai/inference", apiKey: GITHUB_TOKEN })
+      : null;
+
+    // Gemini fallback URL
+    const GEMINI_URL = GEMINI_API_KEY
+      ? `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${GEMINI_API_KEY}`
+      : null;
+
+    const TAG_TRANSLATIONS: Record<string, string> = {
+      "black coffee": "kopi hitam, kopi pahit, bitter coffee",
+      "sweet drinks": "minuman manis, sweet beverages",
+      "cold drinks": "minuman dingin, es, iced drinks",
+      "morning coffee": "kopi pagi, morning brew",
+      "oat milk": "susu oat, plant-based milk",
+      "latte art": "seni latte, coffee art",
+      "caramel": "karamel, gula karamel",
+      "pastry lover": "pecinta pastry, suka roti kue",
+      "matcha": "teh hijau, green tea",
+      "workshop": "lokakarya kopi, coffee workshop, edukasi kopi",
+    };
+
+    for (const c of customers) {
+      const tagDescriptions = c.interestTags
+        .map((tag) => {
+          const translation = TAG_TRANSLATIONS[tag];
+          return translation ? `${tag} (${translation})` : tag;
+        })
+        .join(", ");
+      const text = `Pelanggan kedai kopi: ${c.name}. Minuman favorit: ${c.favoriteDrink}. Minat dan preferensi: ${tagDescriptions}.`;
+      let embedding: number[] | null = null;
+
+      // Try GitHub Models first
+      if (ghClient) {
+        try {
+          const res = await ghClient.embeddings.create({
+            input: text,
+            model: "openai/text-embedding-3-small",
+            dimensions: 256,
+          });
+          embedding = res.data[0].embedding;
+        } catch {
+          // Fall through to Gemini
+        }
+      }
+
+      // Fallback to Gemini
+      if (!embedding && GEMINI_URL) {
+        try {
+          const res = await fetch(GEMINI_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: "models/text-embedding-004",
+              content: { parts: [{ text }] },
+              outputDimensionality: 256,
+            }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            embedding = data.embedding.values;
+          }
+        } catch {
+          // Both failed
+        }
+      }
+
+      if (embedding) {
+        await pool.query(
+          `UPDATE customers SET embedding = $1::vector WHERE id = $2`,
+          [toSql(embedding), c.id],
+        );
+        success++;
+      } else {
+        failed++;
+      }
+    }
+    console.log(`✅ Embeddings: ${success} generated, ${failed} failed`);
+  } else {
+    console.log("⚠️  No GITHUB_TOKEN or GEMINI_API_KEY — skipping embedding generation");
+  }
 
   // Print tag summary
   const allTags = CUSTOMERS.flatMap((c) => c.interestTags);
