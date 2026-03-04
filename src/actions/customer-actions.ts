@@ -5,6 +5,8 @@ import { requireSession } from "@/lib/session";
 import { customerSchema } from "@/schemas/customer";
 import { revalidatePath } from "next/cache";
 import type { Prisma } from "@/generated/prisma/client";
+import { generateCustomerEmbedding } from "@/lib/embeddings";
+import { upsertCustomerEmbedding } from "@/lib/vector-store";
 
 export async function getCustomers(params: {
   search?: string;
@@ -54,6 +56,12 @@ export async function createCustomer(data: unknown) {
   }
 
   const customer = await db.customer.create({ data: parsed.data });
+
+  // Generate and store embedding (non-blocking)
+  generateCustomerEmbedding(parsed.data)
+    .then((embedding) => upsertCustomerEmbedding(customer.id, embedding))
+    .catch((err) => console.error("[Embedding] create failed:", err));
+
   revalidatePath("/customers");
   revalidatePath("/dashboard");
   return { success: true, customer };
@@ -76,6 +84,11 @@ export async function updateCustomer(id: string, data: unknown) {
     where: { id },
     data: parsed.data,
   });
+
+  // Re-generate embedding with updated data (non-blocking)
+  generateCustomerEmbedding(parsed.data)
+    .then((embedding) => upsertCustomerEmbedding(customer.id, embedding))
+    .catch((err) => console.error("[Embedding] update failed:", err));
 
   revalidatePath("/customers");
   revalidatePath("/dashboard");
