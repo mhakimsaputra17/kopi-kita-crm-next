@@ -15,6 +15,7 @@ Kelola pelanggan, analisis segmen, dan buat kampanye promo yang ditargetkan — 
 - [Struktur Projek](#struktur-projek)
 - [Database Schema](#database-schema)
 - [AI Tools (Chat Assistant)](#ai-tools-chat-assistant)
+- [Tech Deep Dive: Hybrid Search (RAG)](#tech-deep-dive-hybrid-search-rag)
 - [Setup & Instalasi](#setup--instalasi)
 - [Cara Menjalankan & Testing](#cara-menjalankan--testing)
 - [API Reference](#api-reference)
@@ -30,8 +31,10 @@ Kelola pelanggan, analisis segmen, dan buat kampanye promo yang ditargetkan — 
 | **Styling** | Tailwind CSS 4 + shadcn/ui (30+ komponen) |
 | **Database** | Prisma 7 ORM + PostgreSQL (Neon Serverless) |
 | **Auth** | Better Auth (email/password, session cookie) |
-| **AI/LLM** | OpenAI SDK — multi-provider via OpenAI-compatible API |
+| **AI/LLM** | LangChain.js + LangGraph (ReAct Agent) + OpenAI SDK |
 | **AI Providers** | GitHub Models (GPT-5, GPT-4.1, DeepSeek, Llama, Grok), Google Gemini, Groq |
+| **RAG / Vector** | pgvector (cosine similarity) + Hybrid Search (vector + keyword ILIKE) |
+| **Embeddings** | `text-embedding-3-small` via GitHub Models (256 dims), Gemini fallback |
 | **Caching** | Upstash Redis (serverless HTTP-based) |
 | **Rate Limiting** | Upstash Ratelimit (sliding window) |
 | **State Management** | TanStack React Query v5 |
@@ -55,17 +58,22 @@ Kelola pelanggan, analisis segmen, dan buat kampanye promo yang ditargetkan — 
 - **Pagination** (10 pelanggan per halaman)
 - **Form create/edit** dengan validasi Zod (nama, kontak, minuman favorit, tag minat)
 - **Delete** dengan dialog konfirmasi
-- **51+ data seed** pelanggan Indonesia dengan preferensi kopi
+- **51+ data seed** pelanggan Indonesia dengan preferensi kopi + bilingual embedding
 
-### 3. AI Chat Assistant
-- **10 AI tools** untuk analisis data pelanggan secara real-time (lihat [AI Tools](#ai-tools-chat-assistant))
+### 3. AI Chat Assistant (LangChain RAG)
+- **13 AI tools** untuk analisis data & CRUD pelanggan secara real-time (lihat [AI Tools](#ai-tools-chat-assistant))
+- **LangGraph ReAct Agent**: reasoning + action loop — AI decide kapan panggil tool, kapan jawab langsung
+- **Hybrid Search (RAG)**: gabungan vector similarity (pgvector cosine ≥ 0.35) + keyword ILIKE matching
+- **Bilingual embeddings**: query "kopi pahit" otomatis match "black coffee" (TAG_TRANSLATIONS enrichment)
+- **CRUD via chat**: tambah & update pelanggan langsung dari chat, otomatis generate embedding
 - **Multi-model support**: 14 model dari 6 provider (GPT-5, Gemini, Groq, dll)
 - **Model selector**: pilih model AI langsung dari UI
 - **Conversation persistence**: histori chat tersimpan di database
 - **Sidebar histori**: rename, delete, navigasi antar percakapan
-- **Streaming response**: output AI muncul bertahap (real-time)
+- **Streaming response**: output AI muncul bertahap (SSE streaming, safe controller handling)
+- **Stop & Retry**: tombol stop untuk hentikan streaming, tombol retry pada pesan error
 - **Chain-of-thought display**: lihat proses "berpikir" AI
-- **Tool calling**: AI otomatis query database untuk menjawab pertanyaan
+- **Tool calling indicators**: UI menampilkan tool mana yang sedang dieksekusi AI
 
 ### 4. AI Promo Generator
 - **Generate 2-3 kampanye promo** berbasis data pelanggan riil
@@ -109,32 +117,39 @@ Kelola pelanggan, analisis segmen, dan buat kampanye promo yang ditargetkan — 
 └─────────┼──────────────────┼────────────────────────────────────┘
           │                  │
     ┌─────┴─────┐     ┌──────┴──────────────────────────────┐
-    │           │     │         AI PROVIDER LAYER            │
+    │           │     │       LANGCHAIN / AI LAYER           │
     │  Prisma   │     │                                      │
-    │  ORM      │     │  ┌─────────┐ ┌───────┐ ┌──────┐    │
-    │           │     │  │ GitHub  │ │Google │ │ Groq │    │
-    │           │     │  │ Models  │ │Gemini │ │      │    │
-    │           │     │  │(GPT-5,  │ │(Flash)│ │(Llama│    │
-    │           │     │  │DeepSeek,│ │       │ │ 3.3) │    │
-    │           │     │  │Llama,..)│ │       │ │      │    │
-    │           │     │  └─────────┘ └───────┘ └──────┘    │
+    │  ORM      │     │  ┌───────────────────────────────┐  │
+    │           │     │  │  LangGraph ReAct Agent         │  │
+    │           │     │  │  (13 tools, streaming)         │  │
+    │           │     │  └───────────┬───────────────────┘  │
+    │           │     │              │                       │
+    │           │     │  ┌───────────┴───────────────────┐  │
+    │           │     │  │     AI PROVIDERS               │  │
+    │           │     │  │  ┌────────┐ ┌──────┐ ┌─────┐  │  │
+    │           │     │  │  │GitHub  │ │Gemini│ │Groq │  │  │
+    │           │     │  │  │Models  │ │Flash │ │Llama│  │  │
+    │           │     │  │  └────────┘ └──────┘ └─────┘  │  │
+    │           │     │  └───────────────────────────────┘  │
     │           │     └─────────────────────────────────────┘
     │           │
-┌───┴───┐  ┌───┴───┐
-│Neon   │  │Upstash│
-│Postgres│  │Redis  │
-│(DB)   │  │(Cache │
-│       │  │+Rate  │
-│       │  │Limit) │
-└───────┘  └───────┘
+┌───┴───┐  ┌───┴───┐  ┌─────────┐
+│Neon   │  │Upstash│  │pgvector │
+│Postgres│  │Redis  │  │(Hybrid  │
+│(DB)   │  │(Cache │  │ Search  │
+│       │  │+Rate  │  │ + RAG)  │
+│       │  │Limit) │  │         │
+└───────┘  └───────┘  └─────────┘
 ```
 
 ### Penjelasan Layer:
 
 1. **Frontend Layer**: Halaman React dengan shadcn/ui, berkomunikasi via React Query (dashboard, customers) dan fetch API (chat streaming, promo generation)
 2. **Server Layer**: Next.js App Router menangani routing, server actions untuk operasi database, API routes untuk AI dan auth
-3. **AI Provider Layer**: OpenAI SDK sebagai wrapper universal, masing-masing provider punya endpoint berbeda tapi pakai interface yang sama. Fallback otomatis jika satu provider error
-4. **Data Layer**: PostgreSQL (Neon) untuk data persisten, Redis (Upstash) untuk cache system prompt (60s TTL) dan rate limiting
+3. **AI Agent Layer**: LangGraph ReAct Agent sebagai orchestrator — menentukan tool mana yang dipanggil, kapan, dan berapa kali. LangChain.js menyediakan tool framework dan streaming
+4. **AI Provider Layer**: OpenAI SDK sebagai wrapper universal, masing-masing provider punya endpoint berbeda tapi pakai interface yang sama. Fallback otomatis jika satu provider error
+5. **RAG / Vector Layer**: pgvector extension untuk cosine similarity search, hybrid search menggabungkan vector + keyword ILIKE. Embedding di-generate via `text-embedding-3-small` (256 dims)
+6. **Data Layer**: PostgreSQL (Neon) untuk data persisten + pgvector untuk embedding, Redis (Upstash) untuk cache system prompt (60s TTL) dan rate limiting
 
 ---
 
@@ -272,8 +287,8 @@ User buka /promo → Klik "Generate Promo Ideas"
 ```
 kopi-kita/
 ├── prisma/
-│   ├── schema.prisma          # Database schema (8 tabel)
-│   └── seed.ts                # Seed 51 pelanggan Indonesia
+│   ├── schema.prisma          # Database schema (8 tabel + pgvector extension)
+│   └── seed.ts                # Seed 45 pelanggan Indonesia + embeddings + demo user
 │
 ├── src/
 │   ├── app/                   # Next.js App Router
@@ -304,7 +319,7 @@ kopi-kita/
 │   │   │
 │   │   └── api/               # API endpoints
 │   │       ├── auth/[...all]/route.ts    # Better Auth handler
-│   │       ├── chat/route.ts             # AI chat (streaming + 10 tools)
+│   │       ├── chat/route.ts             # AI chat (SSE streaming + LangGraph agent + 13 tools)
 │   │       ├── conversations/
 │   │       │   ├── route.ts              # GET/POST conversations
 │   │       │   └── [id]/route.ts         # PATCH/DELETE conversation
@@ -373,6 +388,11 @@ kopi-kita/
 │   │   ├── auth-client.ts     # Better Auth client (signIn, signUp, useSession)
 │   │   ├── session.ts         # Helper: getServerSession, requireSession
 │   │   ├── db.ts              # Prisma client singleton
+│   │   ├── embeddings.ts      # Embedding generation (GitHub Models + Gemini fallback, TAG_TRANSLATIONS)
+│   │   ├── vector-store.ts    # pgvector operations: search, upsert, hybrid search
+│   │   ├── langchain/
+│   │   │   ├── agent.ts       # LangGraph ReAct agent (multi-model, streaming)
+│   │   │   └── tools.ts       # 13 LangChain tools (search, CRUD, promo, analytics)
 │   │   ├── redis.ts           # Upstash Redis client
 │   │   ├── rate-limit.ts      # Rate limiters (chat: 20/10min, promo: 5/10min)
 │   │   ├── prompts.ts         # System prompts untuk chat & promo
@@ -456,6 +476,7 @@ kopi-kita/
 │ contact      │
 │ favoriteDrink│
 │ interestTags │  ← PostgreSQL text[] (GIN index)
+│ embedding    │  ← pgvector(256) — untuk hybrid search / RAG
 │ createdAt    │
 │ updatedAt    │
 └──────────────┘
@@ -463,16 +484,19 @@ kopi-kita/
 
 **Catatan**: Tabel `User`, `Session`, `Account`, `Verification` di-manage oleh Better Auth. Tabel `Customer`, `PromoBatch`, `PromoCampaign`, `ChatConversation`, `ChatMessage` adalah tabel aplikasi.
 
+**pgvector Extension**: Database menggunakan PostgreSQL extension `vector` untuk menyimpan embedding 256 dimensi pada kolom `embedding` di tabel Customer. Digunakan untuk hybrid search (cosine similarity + keyword ILIKE).
+
 ---
 
 ## AI Tools (Chat Assistant)
 
-Chat assistant memiliki **10 tools** yang bisa dipanggil otomatis berdasarkan pertanyaan user:
+Chat assistant menggunakan **LangGraph ReAct Agent** dengan **13 tools** yang dipanggil otomatis berdasarkan pertanyaan user:
 
-### Tools Analisis Data
+### Tools Pencarian & Analisis
 
 | Tool | Fungsi | Contoh Pertanyaan |
 |------|--------|-------------------|
+| `semantic_search_customers` | **Hybrid Search (RAG)** — gabungan vector similarity (pgvector cosine ≥ 0.35) + keyword ILIKE. Mendukung pencarian cross-language (ID↔EN) | *"Cari pelanggan yang suka kopi pahit"*, *"Find sweet drinks customers"* |
 | `get_customer_stats` | Statistik total: pelanggan, tag terpopuler, minuman favorit, pelanggan baru minggu ini | *"Berapa total pelanggan?"*, *"Statistik kedai"* |
 | `search_customers` | Cari pelanggan berdasarkan nama, tag, atau minuman. Keyword "baru" = 7 hari terakhir | *"Siapa yang suka matcha?"*, *"Cari pelanggan bernama Andi"* |
 | `analyze_segments` | Analisis mendalam per segmen: jumlah, top drinks, tag terkait, 5 pelanggan terbaru | *"Analisis segmen sweet drinks"*, *"Detail tag oat milk"* |
@@ -480,6 +504,13 @@ Chat assistant memiliki **10 tools** yang bisa dipanggil otomatis berdasarkan pe
 | `find_top_customers` | Ranking pelanggan berdasarkan engagement score (tags × 3 + tenure days) | *"Pelanggan paling loyal"*, *"Top customers"* |
 | `compare_segments` | Perbandingan side-by-side: jumlah, minuman, overlap, ciri unik | *"Bandingkan matcha vs caramel"* |
 | `get_drink_analysis` | Ranking minuman dengan customer count & tag terkait per minuman | *"Minuman terlaris"*, *"Analisis minuman"* |
+
+### Tools CRUD Pelanggan
+
+| Tool | Fungsi | Contoh Pertanyaan |
+|------|--------|-------------------|
+| `create_customer` | Tambah pelanggan baru + otomatis generate embedding untuk RAG. Cek duplikat by nama | *"Tambah pelanggan Budi, minuman Americano, tag black coffee dan regular"* |
+| `update_customer` | Update data pelanggan (nama, kontak, minuman, tags) + auto-regenerate embedding | *"Update pelanggan Budi, ubah minuman favorit jadi Espresso"* |
 
 ### Tools Promo
 
@@ -564,7 +595,7 @@ bun run db:generate
 # Push schema ke database (buat semua tabel)
 bun run db:push
 
-# Seed data pelanggan (51 pelanggan Indonesia)
+# Seed data pelanggan (45 pelanggan Indonesia + embeddings)
 bun run db:seed
 ```
 
@@ -615,6 +646,7 @@ Password: (lihat di prisma/seed.ts)
 3. Coba pertanyaan-pertanyaan ini:
 
 ```
+# Analisis Data
 "Berapa total pelanggan kita?"
 → AI panggil get_customer_stats, tampilkan statistik
 
@@ -624,6 +656,22 @@ Password: (lihat di prisma/seed.ts)
 "Bandingkan segmen sweet drinks vs black coffee"
 → AI panggil compare_segments, tampilkan perbandingan
 
+# Hybrid Search (RAG) — cross-language
+"Cari pelanggan yang suka kopi pahit"
+→ AI panggil semantic_search_customers, hybrid search (vector + keyword)
+→ Harus menemukan pelanggan dengan tag "black coffee" meski query-nya bahasa Indonesia
+
+"Find customers who like sweet drinks"
+→ Hybrid search bahasa Inggris, match tag "sweet drinks", "caramel", dll
+
+# CRUD via Chat
+"Tambah pelanggan baru: nama Budi, kontak 081234567890, minuman favorit Americano, tag black coffee dan regular"
+→ AI panggil create_customer, otomatis generate embedding
+
+"Update pelanggan Budi, ubah minuman favorit jadi Espresso, tambah tag loyal customer"
+→ AI panggil update_customer, otomatis regenerate embedding
+
+# Promo
 "Buatkan promo untuk pelanggan weekend vibes"
 → AI panggil generate_promo, tampilkan kampanye
 
@@ -632,11 +680,17 @@ Password: (lihat di prisma/seed.ts)
 
 "Minuman apa yang paling laris?"
 → AI panggil get_drink_analysis, tampilkan ranking
+
+# Multi-step
+"Tambahkan pelanggan Budi dengan tag black coffee. Lalu cari pelanggan lain yang punya preferensi mirip Budi."
+→ AI panggil create_customer, lalu semantic_search_customers berturut-turut
 ```
 
-4. **Sidebar**: Lihat histori percakapan di kiri, klik untuk buka
-5. **Rename**: Hover percakapan → klik rename → ubah judul
-6. **Delete**: Hover percakapan → klik delete → percakapan terhapus
+4. **Stop button**: Klik ikon Stop (kotak) saat AI streaming untuk hentikan response
+5. **Retry**: Klik tombol Retry pada pesan error untuk mencoba ulang
+6. **Sidebar**: Lihat histori percakapan di kiri, klik untuk buka
+7. **Rename**: Hover percakapan → klik rename → ubah judul
+8. **Delete**: Hover percakapan → klik delete → percakapan terhapus
 
 ### Test Fitur: Promo Generator
 
@@ -730,7 +784,7 @@ Rename atau hapus percakapan.
 | `bun run db:generate` | Generate Prisma client dari schema |
 | `bun run db:push` | Push schema ke database (tanpa migration) |
 | `bun run db:migrate` | Jalankan Prisma migration |
-| `bun run db:seed` | Seed data awal (51 pelanggan) |
+| `bun run db:seed` | Seed data awal (45 pelanggan + embeddings + demo user) |
 | `bun run db:studio` | Buka Prisma Studio (GUI database) |
 
 ---
@@ -763,6 +817,46 @@ SEED_USER_PASSWORD="..."
 ```
 
 > **Penting**: Ubah `BETTER_AUTH_URL` dan `NEXT_PUBLIC_APP_URL` ke domain production.
+
+---
+
+## Tech Deep Dive: Hybrid Search (RAG)
+
+Kopi Kita menggunakan **Hybrid Search** yang menggabungkan dua pendekatan:
+
+### 1. Vector Similarity (pgvector)
+- Setiap customer punya `embedding` vector 256 dimensi
+- Di-generate via `text-embedding-3-small` (GitHub Models primary, Gemini fallback)
+- Embedding text diperkaya dengan **TAG_TRANSLATIONS** (bilingual):
+  - `"black coffee"` → embedding text include `"kopi hitam, kopi pahit, bitter coffee"`
+  - `"sweet drinks"` → include `"minuman manis, sugary beverages"`
+- Cosine similarity threshold: `≥ 0.35`
+
+### 2. Keyword ILIKE
+- Pencarian langsung di kolom `interest_tags` dan `favorite_drink`
+- Case-insensitive partial match
+
+### 3. Hybrid = UNION + Deduplicate
+```sql
+WITH vector_results AS (
+  SELECT id, 1 - (embedding <=> $1::vector) AS similarity
+  FROM customers WHERE embedding IS NOT NULL
+  AND 1 - (embedding <=> $1::vector) >= 0.35
+  LIMIT 20
+),
+keyword_results AS (
+  SELECT id, 0.5 AS similarity
+  FROM customers WHERE EXISTS(tag ILIKE '%query%') OR drink ILIKE '%query%'
+  LIMIT 20
+)
+SELECT * FROM (SELECT ... UNION ALL ...) GROUP BY id
+ORDER BY MAX(similarity) DESC LIMIT $limit
+```
+
+### Auto-embedding on CRUD
+- **Create customer** (via chat tool): otomatis generate + store embedding
+- **Update customer** (via chat tool): otomatis regenerate embedding jika nama/drink/tags berubah
+- **Seed**: semua 45 pelanggan di-seed dengan embedding
 
 ---
 
