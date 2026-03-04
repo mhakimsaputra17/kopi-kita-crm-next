@@ -1,8 +1,15 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
   reactCompiler: true,
+  serverExternalPackages: [
+    "langsmith",
+    "@langchain/core",
+    "@langchain/openai",
+    "@langchain/langgraph",
+    "@langchain/langgraph-checkpoint",
+    "langchain",
+  ],
 };
 
 export default nextConfig;
